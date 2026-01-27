@@ -1,0 +1,28 @@
+# Temporary files
+*.tmp
+temp_*.png
+temp_*.pptx
+*_working_*.pptx
+
+# Dashboard extracts
+dashboard_slide_*.png
+source_content_analysis.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Example outputs (users should generate their own)
+*Executive Analytics*.pptx
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
