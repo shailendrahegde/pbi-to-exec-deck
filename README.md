@@ -38,7 +38,7 @@ Claude Code reads the constitution file and follows its rules when generating pr
 1. Open your Power BI report
 2. Navigate to **File → Export → PowerPoint**
 3. Save the exported `.pptx` file to your local working directory
-   - Example: `C:\Users\shahegde\claudex\Dashboard-Report.pptx`
+   - Example: `C:\Users\username\claudex\Dashboard-Report.pptx`
 
 #### Step 2: Download the Constitution File
 
@@ -89,19 +89,21 @@ If you want to use your own corporate template and styling:
 Open Claude Code CLI and run the following prompt:
 
 ```
-"[Path-to-your-dashboard.pptx]" Read this file and convert into an executive ready analytics deck following the Claude PowerPoint Constitution. Copy and paste appropriate screenshots in this new deck. Use Analytics template as a reference guide for visuals and formatting expectations. Enforce section 6 of the constitution. Each page should have compelling insights and a persuasive headline.
+"[Path-to-your-dashboard.pptx]" Read every page of this report and extract the most compelling insight a CIO or ITDM could glean from the data points available. Stick to the info within the report and index on actionability bringing out the so what. Generalize the patterns. State this as a story board. For formatting rules,      
+  refer to constitution.
 ```
 
 **Example:**
 ```
-"C:\Users\shahegde\claudex\AI-in-One Dashboard - v10.1.pptx" Read this file and convert into an executive ready analytics deck following the Claude PowerPoint Constitution. Copy and paste appropriate screenshots in this new deck. Use Analytics template as a reference guide for visuals and formatting expectations. Enforce section 6 of the constitution. Each page should have compelling insights and a persuasive headline.
+"C:\Users\username\claudex\AI-in-One Dashboard - v10.1.pptx" Read every page of this report and extract the most compelling insight a CIO or ITDM could glean from the data points available. Stick to the info within the report and index on actionability bringing out the so what. Generalize the patterns. State this as a story board. For formatting rules,      
+  refer to constitution.
 ```
 
 #### Step 5: Review and Refine
 
 1. Claude Code will generate an executive analytics deck (typically named `[Original-Name] - Executive Analytics.pptx`)
 2. Review the output presentation
-3. If adjustments needed, provide specific feedback to Claude Code
+3. If adjustments needed, provide specific feedback to Claude Code or perform manually edit.
 4. Iterate until the presentation meets your standards
 
 ## Constitution Sections Overview
@@ -133,13 +135,13 @@ All slide content **MUST** be traceable directly to the source document. Claude 
 
 **Example:**
 - ❌ "Industry average adoption rate is 15%" (external benchmark)
-- ✓ "Dashboard shows 180 active users out of 4,381 total (4% adoption)" (source data)
+- ✓ "Dashboard shows 1801 active users out of 4,381 total (40% adoption)" (source data)
 
 ### Section 4: Compelling Headlines
 
 Headlines must be insight-driven and emphasize implications:
 - ❌ "Agent Usage Trends" (descriptive label)
-- ✓ "87% of Agent users remain infrequent - usage has not embedded into workflows" (insight + implication)
+- ✓ "37% of Agent users remain infrequent - usage has not embedded into workflows" (insight + implication)
 
 ### Section 3.5: Executive Focus
 
@@ -216,5 +218,7 @@ For issues or questions:
 cd C:\Users\[your-username]\claudex
 # Place your Power BI export and constitution.md here
 # Then run in Claude Code:
-"[your-dashboard.pptx]" Read this file and convert into an executive ready analytics deck following the Claude PowerPoint Constitution. Copy and paste appropriate screenshots in this new deck. Use Analytics template as a reference guide for visuals and formatting expectations. Enforce section 6 of the constitution. Each page should have compelling insights and a persuasive headline.
+"[your-dashboard.pptx]" Read every page of this report and extract the most compelling insight a CIO or ITDM could glean from the data points available. Stick to the info within the report and index on actionability bringing out the so what. Generalize the patterns. State this as a story board. For formatting rules,      
+  refer to constitution.
 ```
+
