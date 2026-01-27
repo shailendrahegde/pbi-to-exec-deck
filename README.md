@@ -29,7 +29,7 @@ Claude Code reads the constitution file and follows its rules when generating pr
 
 - Claude Code CLI installed and configured
 - Power BI report access
-- Local working directory that Claude can access (e.g., `C:\Users\[username]\claudex\`)
+- Local working directory that Claude can access (e.g., `C:\Users\[username]\pbi-to-exec-deck\`)
 
 ### Step-by-Step Guide
 
@@ -38,13 +38,13 @@ Claude Code reads the constitution file and follows its rules when generating pr
 1. Open your Power BI report
 2. Navigate to **File → Export → PowerPoint**
 3. Save the exported `.pptx` file to your local working directory
-   - Example: `C:\Users\username\claudex\Dashboard-Report.pptx`
+   - Example: `C:\Users\username\pbi-to-exec-deck\Dashboard-Report.pptx`
 
 #### Step 2: Download the Constitution File
 
 1. Download `Claude PowerPoint Constitution.md` from this repository
 2. Save it to the same working directory as your Power BI export
-   - Example: `C:\Users\shahegde\claudex\Claude PowerPoint Constitution.md`
+   - Example: `C:\Users\username\pbi-to-exec-deck\Claude PowerPoint Constitution.md`
 
 #### Step 3: Customize the Constitution (Optional)
 
@@ -95,7 +95,7 @@ Open Claude Code CLI and run the following prompt:
 
 **Example:**
 ```
-"C:\Users\username\claudex\AI-in-One Dashboard - v10.1.pptx" Read every page of this report and extract the most compelling insight a CIO or ITDM could glean from the data points available. Stick to the info within the report and index on actionability bringing out the so what. Generalize the patterns. State this as a story board. For formatting rules,      
+"C:\Users\username\pbi-to-exec-deck\AI-in-One Dashboard - v10.1.pptx" Read every page of this report and extract the most compelling insight a CIO or ITDM could glean from the data points available. Stick to the info within the report and index on actionability bringing out the so what. Generalize the patterns. State this as a story board. For formatting rules,      
   refer to constitution.
 ```
 
@@ -215,10 +215,11 @@ For issues or questions:
 **Quick Start Command:**
 
 ```bash
-cd C:\Users\[your-username]\claudex
+cd C:\Users\[your-username]\pbi-to-exec-deck
 # Place your Power BI export and constitution.md here
 # Then run in Claude Code:
 "[your-dashboard.pptx]" Read every page of this report and extract the most compelling insight a CIO or ITDM could glean from the data points available. Stick to the info within the report and index on actionability bringing out the so what. Generalize the patterns. State this as a story board. For formatting rules,      
   refer to constitution.
 ```
+
 
