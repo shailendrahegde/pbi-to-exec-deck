@@ -107,7 +107,8 @@ Failure to comply with these rules is considered an error.
 3. White space MUST be preserved to emphasize hierarchy and clarity.
 4. Visual elements MUST reinforce the narrative, not distract from it.
 5. Layout choices MUST default to the closest matching reference template.
-6. **Presentations MUST be created in wide format (16:9 aspect ratio)** for modern display compatibility.
+6. All text must fit within the page boundaries. Nothing should overflow beyond the page width
+7. **Presentations MUST be created in wide format (16:9 aspect ratio)** for modern display compatibility.
 
 ---
 
