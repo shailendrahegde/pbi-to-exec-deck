@@ -103,7 +103,7 @@ Open Claude Code CLI and run the following prompt:
 
 **Example:**
 ```
-"C:\Users\shahegde\claudex\AI-in-One Dashboard - v10.1.pptx" Read this file and convert into an executive ready analytics deck following the Claude PowerPoint Constitution. Copy and paste appropriate screenshots in this new deck. Each page in the source report should have a corresponding page in the new output deck. Use Analytics template as a reference guide for visuals and formatting expectations. Enforce section 6 of the constitution. Each page should have compelling insights and a persuasive headline.
+"C:\Users\username\claudex\AI-in-One Dashboard - v10.1.pptx" Read this file and convert into an executive ready analytics deck following the Claude PowerPoint Constitution. Copy and paste appropriate screenshots in this new deck. Each page in the source report should have a corresponding page in the new output deck. Use Analytics template as a reference guide for visuals and formatting expectations. Enforce section 6 of the constitution. Each page should have compelling insights and a persuasive headline.
 ```
 
 #### Step 5: Review and Refine
