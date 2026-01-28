@@ -63,14 +63,14 @@ If you want to use your own corporate template and styling:
    - This ensures clean slides without inherited template artifacts
 ```
 
-4. Update **Section 10: Reference Templates** with your template file paths:
+##### 4. Download the storyboard and update **Section 10: Reference Templates** with your template file paths:
 
 ```markdown
 ## 10. Reference Templates (Authoritative)
 
 ### Primary Corporate Templates
 - Analytics Decks:
-  "C:\Path\To\Your\Analytics-Template.pptx"
+  - Example: `C:\Users\username\pbi-to-exec-deck\Storyboard.pptx`
 - Strategy Narrative Template:
   "C:\Path\To\Your\Strategy-Template.pptx"
 ```
@@ -221,5 +221,6 @@ cd C:\Users\[your-username]\pbi-to-exec-deck
 "[your-dashboard.pptx]" Read every page of this report and extract the most compelling insight a CIO or ITDM could glean from the data points available. Stick to the info within the report and index on actionability bringing out the so what. Generalize the patterns. State this as a story board. For formatting rules,      
   refer to constitution.
 ```
+
 
 
