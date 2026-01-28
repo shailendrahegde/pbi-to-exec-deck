@@ -17,7 +17,7 @@ Failure to comply with these rules is considered an error.
 2. Claude MUST use ONLY the information provided in the supplied source document.
 3. Claude MUST NOT introduce external facts, benchmarks, assumptions, or interpretations not explicitly supported by the source.
 4. Claude MUST NOT insert stock images or decorative imagery.
-5. Claude MUST anchor layout and visual structure to the referenced templates in Section 10.
+5. Claude MUST anchor layout and visual structure to the referenced templates in Section 11.
 6. Claude MUST explain any deviation from these rules explicitly before producing output.
 
 ---
@@ -31,7 +31,7 @@ Failure to comply with these rules is considered an error.
 5. Each slide MUST include 2-3 insights. Do not overcrowd the page. This is for an executive audience.
 6. Every slide MUST advance understanding or decision-making for an executive audience.
 7. Include a cover page and table of contents
-8. **The cover page MUST follow the exact background, style, and pattern from the reference template** (Section 10)
+8. **The cover page MUST follow the exact background, style, and pattern from the reference template** (Section 11)
 9. Insert section breaks when you are moving from one core idea to another
 10. **Section separator pages MUST match the style and pattern from the reference template**
 
@@ -78,8 +78,25 @@ Failure to comply with these rules is considered an error.
 3. If the source is insufficient to support a slide, Claude MUST state that limitation explicitly.
 
 ---
+## 7. Text Boxes
 
-## 7. Image Usage Rules
+### Layout & Page Boundaries
+- Claude MUST ensure that Text boxes **always remain fully within the page borders**.
+- Claude MUST ensure that Text boxes **do not extend into or overlap page margins**.
+- Claude MUST ensure that Text boxes **do not overflow** (no content or box edges may be rendered outside the printable/page boundary).
+
+### Text Wrapping & Overflow Handling
+- Claude MUST ensure that text inside text boxes **must wrap automatically** when it cannot fit on a single line.
+- Claude MUST ensure that horizontal overflow (e.g., clipped text, scrolling, or text rendering past the box edge) **is not permitted**.
+- Claude MUST ensure that if content cannot fit vertically, the text box must be resized **only within page borders/margins constraints**; otherwise content must be edited/shortened or moved to a continued element on the next page (still respecting these rules).
+
+### Typography
+- **Minimum font size:** 12 pt (must never be smaller).
+- **Preferred font size:** 14 pt.
+- **Preferred font family:** Segoe Sans Display.
+- If Segoe Sans Display is unavailable, use the closest approved fallback per the constitution’s typography rules, while still honoring the minimum font size requirement.
+
+## 8. Image Usage Rules
 
 1. Claude MUST NOT insert stock images under any circumstances.
 2. Images MAY ONLY be used if they are explicitly provided or explicitly requested.
@@ -97,7 +114,7 @@ Failure to comply with these rules is considered an error.
 
 ---
 
-## 8. Visual Consistency Standards
+## 9. Visual Consistency Standards
 
 1. **ALWAYS start from a blank template and apply styling and formatting from one of the suggested reference templates.**
    - Do NOT use the reference template file directly as the presentation base
@@ -113,7 +130,7 @@ Failure to comply with these rules is considered an error.
 ---
 
 
-## 9. Claude Response Protocol
+## 10. Claude Response Protocol
 
 When creating or modifying slides, Claude MUST:
 
@@ -126,7 +143,7 @@ When creating or modifying slides, Claude MUST:
 
 ---
 
-## 10. Reference Templates (Authoritative)
+## 11. Reference Templates (Authoritative)
 
 The following templates define the **canonical look, feel, and layout patterns** that Claude MUST follow.
 These templates are not inspirational — they are normative.
@@ -160,7 +177,7 @@ If no reference template applies cleanly, Claude MUST state that explicitly and 
 
 ---
 
-## 11. Required Self-Audit (End of Output)
+## 12. Required Self-Audit (End of Output)
 
 Claude MUST include the following section at the end of each response:
 
@@ -174,7 +191,7 @@ Claude MUST include the following section at the end of each response:
 
 ---
 
-## 12. Precedence
+## 13. Precedence
 
 If instructions conflict:
 1. This constitution takes precedence over general prompts.
