@@ -38,7 +38,7 @@ Claude Code reads the constitution file and follows its rules when generating pr
 1. Open your Power BI report
 2. Navigate to **File → Export → PowerPoint**
 3. Save the exported `.pptx` file to your local working directory
-   - Example: `C:\Users\shahegde\claudex\Dashboard-Report.pptx`
+   - Example: `C:\Users\username\claudex\Dashboard-Report.pptx`
 
 #### Step 2: Download Constitution and Example Files
 
@@ -46,8 +46,8 @@ Claude Code reads the constitution file and follows its rules when generating pr
    - `Claude PowerPoint Constitution.md` (required)
    - `Example-Storyboard-Analytics.pptx` (recommended - shows expected output quality)
 2. Save them to the same working directory as your Power BI export
-   - Example: `C:\Users\shahegde\claudex\Claude PowerPoint Constitution.md`
-   - Example: `C:\Users\shahegde\claudex\Example-Storyboard-Analytics.pptx`
+   - Example: `C:\Users\username\claudex\Claude PowerPoint Constitution.md`
+   - Example: `C:\Users\username\claudex\Example-Storyboard-Analytics.pptx`
 
 **Why download the example storyboard?**
 - See the expected output format and quality
