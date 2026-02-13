@@ -121,7 +121,7 @@ def prepare_for_claude_analysis(source_path):
 
 
 def show_claude_instructions(request_file):
-    """Show instructions for Claude to generate insights"""
+    """Show instructions for Claude to generate insights (manual mode)"""
 
     print("\n" + "=" * 70)
     print("NEXT STEP: CLAUDE GENERATES INSIGHTS")
@@ -130,28 +130,69 @@ def show_claude_instructions(request_file):
     print(f"""
 Claude will now analyze each dashboard image and generate insights.
 
-Please run this command in Claude Code:
+Please say to Claude Code:
 
-    Analyze the dashboards in {request_file} and generate analyst-grade insights.
-    For each slide:
-    1. Read the image
-    2. Act as senior analyst advisor to IT decision maker
-    3. Generate compelling headline with specific number
-    4. Generate 2-3 strategic insights with clear "so what"
-    5. Focus on gaps, opportunities, actions
-
-    Save results to temp/claude_insights.json
-
-Claude will:
-- Read each dashboard image using the Read tool
-- Analyze trends, patterns, gaps
-- Generate strategic insights (not data restatements)
-- Answer "so what?" for every insight
-- Provide actionable recommendations
+    "Analyze the dashboards in {request_file} and generate analyst-grade insights.
+    Save results to temp/claude_insights.json"
 
 After Claude completes, run:
     python convert_dashboard_claude.py --build --output [output.pptx]
 """)
+
+
+def trigger_claude_analysis(request_file):
+    """Trigger Claude Code to analyze dashboards (automatic mode)"""
+
+    print("\n" + "=" * 70)
+    print("STEP 2: CLAUDE ANALYSIS")
+    print("=" * 70)
+
+    # Load request to show Claude what to analyze
+    with open(request_file, 'r', encoding='utf-8') as f:
+        request = json.load(f)
+
+    print(f"\nClaude Code: Please analyze these {request['total_slides']} dashboard images.\n")
+
+    print("For each slide:")
+    for slide in request['slides']:
+        print(f"  - Slide {slide['slide_number']}: {slide['title']}")
+        print(f"    Image: {slide['image_path']}")
+        print(f"    Type: {slide['slide_type']}")
+
+    print("\n" + "-" * 70)
+    print("CLAUDE CODE TASK:")
+    print("-" * 70)
+    print("""
+Act as senior analyst advisor to IT decision maker.
+
+For EACH dashboard image above:
+1. Read the image file
+2. Extract specific numbers visible in the dashboard
+3. Generate compelling headline with specific number ([Number] + [Insight])
+4. Generate 2-3 concise insights (1-2 sentences each):
+   - Insight 1: Specific observation with number
+   - Insight 2: Pattern/opportunity identified (include platform/feature analysis)
+   - Insight 3: Actionable recommendation
+5. Use friendly tone (opportunities, not criticisms)
+6. If insufficient data visible, mark as "Insufficient data"
+
+Follow Claude PowerPoint Constitution Section 5A guidelines.
+
+Save results to: temp/claude_insights.json
+
+Format:
+{
+  "slides": [
+    {
+      "title": "slide title",
+      "headline": "[Number] + [Insight]",
+      "insights": ["insight 1", "insight 2", "insight 3"],
+      "numbers_used": ["123", "45%"]
+    }
+  ]
+}
+""")
+    print("-" * 70)
 
 
 def build_presentation_from_insights(source_path, output_path, insights_file):
@@ -200,20 +241,72 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
 def main():
     parser = argparse.ArgumentParser(
         description='Convert Power BI dashboards using Claude Code for insights',
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Single command (automatic workflow):
+  python convert_dashboard_claude.py --source dashboard.pptx --output executive.pptx
+
+  # Manual workflow (step-by-step):
+  python convert_dashboard_claude.py --source dashboard.pptx --prepare
+  python convert_dashboard_claude.py --build --output executive.pptx
+"""
     )
 
     parser.add_argument('--source', help='Source PowerPoint file')
     parser.add_argument('--output', help='Output PowerPoint file')
     parser.add_argument('--prepare', action='store_true',
-                       help='Prepare slides for Claude analysis')
+                       help='Prepare slides for Claude analysis (Step 1 only)')
     parser.add_argument('--build', action='store_true',
-                       help='Build final presentation from Claude insights')
+                       help='Build final presentation from Claude insights (Step 3 only)')
     parser.add_argument('--insights', default='temp/claude_insights.json',
-                       help='Path to Claude insights JSON')
+                       help='Path to Claude insights JSON (default: temp/claude_insights.json)')
 
     args = parser.parse_args()
 
+    # ========================================================================
+    # SINGLE-COMMAND WORKFLOW: Orchestrate all 3 steps automatically
+    # ========================================================================
+    if args.source and args.output and not args.prepare and not args.build:
+        print("\n" + "=" * 70)
+        print("AUTOMATED CONVERSION WORKFLOW")
+        print("=" * 70)
+        print(f"\nSource: {args.source}")
+        print(f"Output: {args.output}")
+        print("\nThis will run all 3 steps automatically:")
+        print("  1. Extract dashboard images")
+        print("  2. Claude analyzes and generates insights")
+        print("  3. Build executive presentation")
+
+        # STEP 1: Prepare slides for analysis
+        print("\n" + "=" * 70)
+        print("STEP 1: EXTRACTING DASHBOARDS")
+        print("=" * 70)
+        request_file = prepare_for_claude_analysis(args.source)
+
+        # STEP 2: Trigger Claude analysis
+        trigger_claude_analysis(request_file)
+
+        # Wait for user confirmation after Claude generates insights
+        print("\n" + "=" * 70)
+        input("Press ENTER after Claude has generated insights...")
+        print("=" * 70)
+
+        # STEP 3: Build final presentation
+        print("\n" + "=" * 70)
+        print("STEP 3: BUILDING PRESENTATION")
+        print("=" * 70)
+        build_presentation_from_insights(args.source, args.output, args.insights)
+
+        print("\n" + "=" * 70)
+        print("✓ CONVERSION COMPLETE!")
+        print("=" * 70)
+        print(f"\nExecutive presentation created: {args.output}")
+        return 0
+
+    # ========================================================================
+    # MANUAL WORKFLOW: Individual steps
+    # ========================================================================
     if args.prepare or (args.source and not args.build):
         # Step 1: Prepare slides for Claude
         if not args.source:

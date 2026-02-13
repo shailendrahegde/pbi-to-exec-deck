@@ -25,26 +25,23 @@ Transform Power BI dashboards into executive-ready presentations with **analyst-
 
 ---
 
-## Quick Start (3 Steps)
+## Quick Start (2 Steps)
 
 ### 1. Export your Power BI dashboard
 - In Power BI: **File → Export → PowerPoint**
 - Save the `.pptx` file
 
-### 2. Run the converter
+### 2. Run the converter (single command)
 ```bash
-# Step 1: Extract dashboards
-python convert_dashboard_claude.py --source "your-dashboard.pptx" --prepare
-
-# Step 2: In Claude Code, say:
-"Generate analyst insights for the dashboards"
-
-# Step 3: Build final deck
-python convert_dashboard_claude.py --build --output "executive-deck.pptx"
+python convert_dashboard_claude.py --source "your-dashboard.pptx" --output "executive-deck.pptx"
 ```
 
-### 3. Open your executive-ready deck
-Done! You now have a professional presentation with compelling insights.
+That's it! The script handles everything:
+- ✅ Extracts dashboard images
+- ✅ Claude automatically analyzes and generates insights
+- ✅ Builds your executive-ready presentation
+
+**You'll press Enter once** after Claude finishes the analysis, then your deck is ready!
 
 ---
 
@@ -93,14 +90,19 @@ No OCR or API keys required.
 
 **Common issues:**
 
-**Q: Claude didn't generate insights?**
-A: After running `--prepare`, explicitly ask Claude: "Generate analyst insights for the dashboards in temp/analysis_request.json"
+**Q: Want to run steps manually?**
+A: Use `--prepare` and `--build` flags separately:
+```bash
+python convert_dashboard_claude.py --source "dashboard.pptx" --prepare
+# Then tell Claude to analyze
+python convert_dashboard_claude.py --build --output "executive.pptx"
+```
 
 **Q: Want different insight style?**
-A: Edit the insights in `temp/claude_insights.json` before running `--build`
+A: Edit the insights in `temp/claude_insights.json` before pressing Enter to continue
 
-**Q: Output not wide format?**
-A: Delete old output and re-run `--build` - latest version uses 16:9
+**Q: Claude didn't see the analysis request?**
+A: Explicitly say: "Analyze the dashboards in temp/analysis_request.json and save to temp/claude_insights.json"
 
 ---
 
@@ -135,17 +137,13 @@ A: Delete old output and re-run `--build` - latest version uses 16:9
 
 ## Advanced: Batch Processing
 
-Process multiple dashboards:
+Process multiple dashboards one at a time:
 ```bash
-for file in dashboards/*.pptx; do
-    python convert_dashboard_claude.py --source "$file" --prepare
-done
-
-# Claude generates insights for all
-
+# Process each dashboard with single command
 for file in dashboards/*.pptx; do
     output="${file%.pptx}_executive.pptx"
-    python convert_dashboard_claude.py --build --output "$output"
+    python convert_dashboard_claude.py --source "$file" --output "$output"
+    # Script will pause for Claude analysis, then press Enter
 done
 ```
 

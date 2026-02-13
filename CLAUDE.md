@@ -17,77 +17,95 @@ This project converts Power BI dashboard exports (.pptx) into executive-ready an
 
 ## Standard Workflow: Claude-Powered Conversion
 
-When a user requests dashboard conversion, follow this **3-step workflow**:
-
-### Step 1: Prepare Slides for Analysis (Deterministic)
+When a user requests dashboard conversion, they run a **single command** that orchestrates all steps:
 
 ```bash
-python convert_dashboard_claude.py --source "dashboard.pptx" --prepare
+python convert_dashboard_claude.py --source "dashboard.pptx" --output "executive.pptx"
 ```
 
-**What this does:**
-- Extracts each dashboard slide as PNG image to `temp/` directory
+### What Happens Automatically:
+
+**Step 1: Extract (5 seconds)**
+- Script extracts each dashboard slide as PNG image to `temp/` directory
 - Parses slide titles and structure
 - Creates `temp/analysis_request.json` with slide metadata
-- **Takes ~5 seconds**
 
-### Step 2: Generate Analyst-Grade Insights (Intelligent)
+**Step 2: Claude Analysis (You!)**
+- Script displays clear request for Claude to analyze dashboards
+- You (Claude Code) automatically see the request and respond
+- **Your task:** Analyze each dashboard image and generate insights
+- **Save results to:** `temp/claude_insights.json`
 
-**You (Claude) analyze each dashboard and generate insights:**
-
-1. **Read the analysis request:**
-   ```
-   Read temp/analysis_request.json
-   ```
-
-2. **For each slide, read the dashboard image:**
-   ```
-   Read temp/slide_2.png
-   Read temp/slide_3.png
-   ... etc
-   ```
-
-3. **Act as senior analyst advisor to IT decision maker:**
-   - Identify key numbers, trends, patterns
-   - Spot gaps and opportunities
-   - Generate strategic insights with "so what"
-   - Provide actionable recommendations
-
-4. **Write insights to JSON:**
-   ```json
-   {
-     "slides": [
-       {
-         "slide_number": 2,
-         "title": "...",
-         "headline": "[Number] + [Insight]",
-         "insights": [
-           "[Specific observation with business implication]",
-           "[Gap or opportunity identified]",
-           "[Actionable recommendation]"
-         ],
-         "numbers_used": ["134", "1,275", "11%"]
-       }
-     ]
-   }
-   ```
-
-   Save to: `temp/claude_insights.json`
-
-### Step 3: Build Final Presentation (Deterministic)
-
-```bash
-python convert_dashboard_claude.py --build --output "result.pptx"
-```
-
-**What this does:**
-- Loads Claude's insights from JSON
+**Step 3: Build (3 seconds)**
+- After you finish, user presses Enter
+- Script loads your insights from JSON
 - Creates professional slides (16:9 widescreen)
-- Embeds dashboard images on left
-- Adds insights on right
+- Embeds dashboard images with insights
 - Applies Analytics template styling
 - Validates against Constitution
-- **Takes ~3 seconds**
+
+**Total time:** ~30 seconds including your analysis
+
+---
+
+## Your Task: Generate Analyst-Grade Insights
+
+When the script displays the analysis request, you should:
+
+### 1. Read the analysis request
+```
+Read temp/analysis_request.json
+```
+
+### 2. For each slide, read the dashboard image
+```
+Read temp/slide_1.png
+Read temp/slide_2.png
+... (for all slides listed)
+```
+
+### 3. Act as senior analyst advisor to IT decision maker
+- Identify key numbers, trends, patterns
+- Spot gaps and opportunities
+- Generate strategic insights with "so what"
+- Provide actionable recommendations
+
+### 4. Write insights to JSON
+```json
+{
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "Slide Title",
+      "headline": "[Number] + [Insight]",
+      "insights": [
+        "[Specific observation with business implication]",
+        "[Gap or opportunity identified]",
+        "[Actionable recommendation]"
+      ],
+      "numbers_used": ["134", "1,275", "11%"]
+    }
+  ]
+}
+```
+
+**Save to:** `temp/claude_insights.json`
+
+---
+
+## Manual Workflow (Optional)
+
+If users want step-by-step control:
+
+```bash
+# Step 1: Prepare only
+python convert_dashboard_claude.py --source "dashboard.pptx" --prepare
+
+# Step 2: You analyze (same as above)
+
+# Step 3: Build only
+python convert_dashboard_claude.py --build --output "executive.pptx"
+```
 
 ---
 
