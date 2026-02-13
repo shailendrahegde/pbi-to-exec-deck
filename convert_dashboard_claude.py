@@ -86,8 +86,13 @@ def prepare_for_claude_analysis(source_path):
     slides_to_analyze = []
 
     print(f"\nExtracting {len(prs.slides)} slides...")
+    print("  Skipping slide 1 (title page)...")
 
     for idx, slide in enumerate(prs.slides):
+        # Skip the first slide (title page with metadata, no insights)
+        if idx == 0:
+            continue
+
         title = extract_slide_title(slide)
         image_path = f"temp/slide_{idx+1}.png"
 

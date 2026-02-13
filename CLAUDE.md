@@ -27,6 +27,7 @@ python convert_dashboard_claude.py --source "dashboard.pptx" --output "executive
 
 **Step 1: Extract (5 seconds)**
 - Script extracts each dashboard slide as PNG image to `temp/` directory
+- **Automatically skips first slide** (title page with metadata like "last refreshed", "view in PowerBI")
 - Parses slide titles and structure
 - Creates `temp/analysis_request.json` with slide metadata
 
