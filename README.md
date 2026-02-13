@@ -1,139 +1,166 @@
-# Power BI to Executive Deck
+# Power BI to Executive Deck Converter
 
-Transform Power BI dashboards into executive-ready PowerPoint presentations in seconds using Claude Code.
-
-## Quick Start
-
-### 1. Clone this repository
-```bash
-git clone https://github.com/shailendrahegde/pbi-to-exec-deck
-cd pbi-to-exec-deck
-```
-
-### 2. Export your Power BI dashboard
-- In Power BI: **File → Export → PowerPoint**
-- Save the `.pptx` file to this directory
-
-### 3. Run this command in Claude Code
-```
-"[your-dashboard.pptx]" Read this file and convert into an executive ready analytics deck following the Claude PowerPoint Constitution. Copy and paste appropriate screenshots in this new deck. Each page in the source report should have a corresponding page in the new output deck. Use Analytics template as a reference guide for visuals and formatting expectations. Enforce section 6 of the constitution. Each page should have compelling insights and a persuasive headline.
-```
-
-**Example:**
-```
-"Sales-Dashboard.pptx" Read this file and convert into an executive ready analytics deck following the Claude PowerPoint Constitution. Copy and paste appropriate screenshots in this new deck. Each page in the source report should have a corresponding page in the new output deck. Use Analytics template as a reference guide for visuals and formatting expectations. Enforce section 6 of the constitution. Each page should have compelling insights and a persuasive headline.
-```
-
-That's it! Claude will generate an executive-ready presentation.
-
----
+Transform Power BI dashboards into executive-ready presentations with **analyst-grade insights** in under 30 seconds.
 
 ## What You Get
 
-✅ **Compelling insights** - Not just data summaries
-✅ **Persuasive headlines** - Insight-driven, not descriptive
-✅ **Professional formatting** - Corporate template styling
-✅ **Source fidelity** - All insights traceable to your data
-✅ **Executive-focused** - 2-3 insights per slide, no information overload
+**Before (Power BI Export):**
+- Raw dashboard screenshots
+- No insights or narrative
+- Just data visualizations
 
-**See example output:** Open `Example-Storyboard-Analytics.pptx` in this repository
+**After (Executive Deck):**
+- 📊 Professional 16:9 widescreen slides
+- 💡 Compelling insights with specific numbers
+- 🎯 Actionable recommendations
+- ⚡ Generated in < 30 seconds
+
+### Example Transformation
+
+**Generic Statement:**
+> "There are 1,275 active Copilot users"
+
+**Analyst-Grade Insight:**
+> "134 Agent users from 1,275 total (11%) - significant opportunity to expand automation adoption. HR Generalists (140 actions/user) are 3-4x above average - great candidates to champion agent adoption"
+
+---
+
+## Quick Start (3 Steps)
+
+### 1. Export your Power BI dashboard
+- In Power BI: **File → Export → PowerPoint**
+- Save the `.pptx` file
+
+### 2. Run the converter
+```bash
+# Step 1: Extract dashboards
+python convert_dashboard_claude.py --source "your-dashboard.pptx" --prepare
+
+# Step 2: In Claude Code, say:
+"Generate analyst insights for the dashboards"
+
+# Step 3: Build final deck
+python convert_dashboard_claude.py --build --output "executive-deck.pptx"
+```
+
+### 3. Open your executive-ready deck
+Done! You now have a professional presentation with compelling insights.
+
+---
+
+## What Makes This Different
+
+✅ **Analyst-grade insights** - Not just data restatements
+✅ **No API key needed** - Uses your Claude Code session
+✅ **16:9 widescreen** - Modern presentation format
+✅ **Specific numbers** - Every insight backed by data
+✅ **Friendly tone** - Opportunities, not criticisms
+✅ **Fast** - Complete in under 30 seconds
+
+---
+
+## Installation
+
+Already done if you're in this repo! Dependencies:
+- `python-pptx` ✓
+- `markitdown` ✓
+- `Pillow` ✓
+
+No OCR or API keys required.
+
+---
+
+## Sample Insights Generated
+
+**Real examples from dashboard conversions:**
+- "Client Finance achieves 217 prompts per user (5.7x average) - proven pattern to replicate"
+- "HR Generalists (22 users, 140 prompts) have embedded workflows - leverage as champions"
+- "Draft as IP Agent leads with 546 actions - successful use case to build on"
 
 ---
 
 ## How It Works
 
-The **Claude PowerPoint Constitution** enforces quality standards:
-- Storyboard-driven narrative (not disconnected slides)
-- Actionable insights with clear "so what" messaging
-- Professional visual consistency
-- All content grounded in your source data (no external facts)
+**Step 1 (Deterministic):** Python extracts dashboard images and structure
+**Step 2 (Intelligent):** Claude analyzes dashboards as senior analyst advisor
+**Step 3 (Deterministic):** Python renders professional slides with insights
+
+**Key insight:** Technical tasks are automated, strategic analysis uses AI.
 
 ---
 
-## Optional Customization
+## Need Help?
 
-Want to use your own corporate templates? Edit section 11 in `Claude PowerPoint Constitution.md` and add your template paths:
+**Common issues:**
 
-```markdown
-**Optional: Customize with Your Corporate Templates**
-- Analytics Decks: `C:\Path\To\Your\Analytics-Template.pptx`
-- Strategy Narrative: `C:\Path\To\Your\Strategy-Template.pptx`
-```
+**Q: Claude didn't generate insights?**
+A: After running `--prepare`, explicitly ask Claude: "Generate analyst insights for the dashboards in temp/analysis_request.json"
+
+**Q: Want different insight style?**
+A: Edit the insights in `temp/claude_insights.json` before running `--build`
+
+**Q: Output not wide format?**
+A: Delete old output and re-run `--build` - latest version uses 16:9
 
 ---
 
-## Advanced Options
+## Key Files
 
-### Skip Permission Prompts (Use with Caution)
+- `convert_dashboard_claude.py` - Main converter
+- `CLAUDE.md` - Detailed workflow for Claude
+- `Claude PowerPoint Constitution.md` - Quality standards
+- `Example-Storyboard-Analytics.pptx` - Visual template reference
 
-If you're running this in an automated workflow or want to skip permission prompts, you can run Claude Code in a less restrictive permission mode:
+---
 
-**⚠️ WARNING:** This bypasses safety checks. Only use in trusted environments with trusted source files.
+## Insight Quality Examples
 
-**Option 1: Command-line flag**
+### ✅ Good (What You'll Get)
+- Concise (1-2 sentences)
+- Specific numbers included
+- Friendly opportunity framing
+- Actionable recommendation
+
+**Example:** "HR Generalists (140 actions/user) are 3-4x above average - great candidates to champion agent adoption across their teams"
+
+### ❌ Bad (What We Avoid)
+- Verbose paragraphs
+- Generic statements without numbers
+- Critical/negative tone
+- No actionable takeaway
+
+**Example:** "The data shows that there are users with varying levels of engagement across different departments which may indicate potential areas for improvement"
+
+---
+
+## Advanced: Batch Processing
+
+Process multiple dashboards:
 ```bash
-claude --dangerously-disable-sandbox
+for file in dashboards/*.pptx; do
+    python convert_dashboard_claude.py --source "$file" --prepare
+done
+
+# Claude generates insights for all
+
+for file in dashboards/*.pptx; do
+    output="${file%.pptx}_executive.pptx"
+    python convert_dashboard_claude.py --build --output "$output"
+done
 ```
-
-**Option 2: Environment variable**
-```bash
-# Windows PowerShell
-$env:CLAUDE_DANGEROUSLY_DISABLE_SANDBOX="true"
-claude
-
-# Windows CMD
-set CLAUDE_DANGEROUSLY_DISABLE_SANDBOX=true
-claude
-
-# Linux/Mac
-export CLAUDE_DANGEROUSLY_DISABLE_SANDBOX=true
-claude
-```
-
-**Option 3: Permission mode setting**
-```bash
-# Set to auto-approve mode (less restrictive)
-claude --permission-mode auto
-```
-
-**What this does:**
-- Skips confirmation prompts for file reads/writes
-- Allows bash commands without approval
-- Enables faster automated processing
-
-**When to use:**
-- Batch processing multiple dashboards
-- CI/CD pipeline integration
-- Trusted environment with known inputs
-
-**When NOT to use:**
-- Processing files from untrusted sources
-- First-time testing
-- Production environments without review
-
----
-
-## Troubleshooting
-
-**Generic insights?**
-→ Add "Enforce section 6 - extract specific data points" to your prompt
-
-**Too much text?**
-→ Remind Claude: "Limit to 2-3 insights per slide for executive audience"
-
-**Descriptive headlines?**
-→ Emphasize: "compelling insights and persuasive headlines" in your prompt
-
----
-
-## Learn More
-
-- **[QUICK-START.md](QUICK-START.md)** - Detailed walkthrough
-- **[EXAMPLE-STORYBOARD.md](EXAMPLE-STORYBOARD.md)** - Example output breakdown
-- **[Claude PowerPoint Constitution.md](Claude%20PowerPoint%20Constitution.md)** - Full governance rules
 
 ---
 
 ## License
 
-MIT - Use and modify freely for your organization's needs
+MIT - Use freely for your organization
+
+---
+
+## Ready to Try?
+
+**Run the 3-step process above** on your Power BI dashboard.
+
+**You'll have a professional executive deck in under 30 seconds.**
+
+That's it! 🚀

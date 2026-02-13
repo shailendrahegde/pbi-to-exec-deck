@@ -70,6 +70,126 @@ Failure to comply with these rules is considered an error.
 
 ---
 
+## 5A. Insight Generation Guidelines (For Dashboard Conversions)
+
+When converting dashboards or analytics reports using Claude's vision capabilities, follow these insight generation principles:
+
+### Tone and Style
+1. **Be concise:** Keep insights to 1-2 sentences maximum
+2. **Be friendly:** Frame as opportunities, not criticisms or failures
+3. **Be specific:** Always include concrete numbers from the dashboard
+4. **Be actionable:** Help IT decision makers take action
+
+### What Makes a Compelling Insight
+1. **Good insight structure:**
+   - Specific number + observation + business implication
+   - Example: "HR Generalists (140 actions/user) are 3-4x above average - great candidates to champion agent adoption"
+
+2. **Bad patterns to avoid:**
+   - Generic: "There are 1,275 active users"
+   - Critical: "Only 11% adoption shows deployment failure"
+   - Verbose: Multi-sentence explanations or academic analysis
+   - Judgmental: "Critical blind spot", "massive gap", "total failure"
+
+### Headline Formula
+`[Specific Number] + [Key Insight/Opportunity]`
+
+**Good examples:**
+- "134 Agent users from 1,275 total (11%) - significant opportunity to expand automation adoption"
+- "Client Finance achieves 217 prompts per user (5.7x average) - proven pattern to replicate"
+
+**Bad examples:**
+- "Agent Adoption Overview" (no number, descriptive not insight)
+- "Only 11% of users have adopted agents showing critical deployment failure" (too critical/verbose)
+
+### Three-Insight Structure Per Slide
+1. **Insight 1 (Scale/Scope):** Specific observation with number
+   - "Agent adoption at 11% while web chat reaches 1,275 users shows strong platform engagement"
+
+2. **Insight 2 (Pattern/Opportunity):** Trend or comparison identified
+   - "HR Generalists (140 actions/user) are 3-4x above average - natural champions for expansion"
+   - **Include platform/feature patterns:** "Teams integration shows 3x higher engagement than Outlook - collaborative workflows drive value"
+
+3. **Insight 3 (Action):** Recommendation with expected outcome
+   - "Client Delivery's concentration positions them as ideal pilot group for scaling agent workflows"
+
+### Platform & Feature Analysis (CRITICAL)
+When analyzing dashboards, Claude MUST identify and analyze platform, app, and feature patterns:
+
+**What to look for:**
+- **Microsoft 365 apps:** Outlook, Teams, Word, Excel, PowerPoint, OneNote, OneDrive
+- **Copilot features:** Chat (Web), Agents, M365 Copilot, Business Chat, integrations
+- **Platform variations:** Web vs. desktop, standalone vs. embedded, integrated vs. separate
+- **Feature adoption:** Which specific capabilities show high engagement
+- **Usage concentration:** Which platforms dominate vs. underperform
+
+**Examples of platform insights:**
+- ✅ "PowerPoint Copilot leads with 450 actions while Excel shows 89 - content creation is primary use case to scale"
+- ✅ "Teams integration achieves 3x engagement vs. Outlook - collaborative workflows deliver higher value"
+- ✅ "Web chat dominates (1,275 users) while M365 integrated shows zero - integration barrier preventing adoption"
+- ✅ "Draft as IP Agent (546 actions) outperforms other agents 7x - IP workflow automation resonates with users"
+
+**Why this matters:**
+- Reveals which workflows and integrations deliver value
+- Identifies successful platforms to replicate patterns from
+- Shows integration failures requiring attention
+- Guides feature prioritization and training focus
+- Helps target enablement to high-value use cases
+
+### What NOT to Do
+❌ **Don't criticize the analytics:** Avoid "missing data", "blind spot", "poor reporting"
+❌ **Don't be verbose:** No multi-paragraph explanations
+❌ **Don't use harsh language:** Avoid "failure", "disaster", "critical gap"
+❌ **Don't make generic statements:** Always include specific numbers
+❌ **Don't force insights without data:** If a page has no numbers or is blank, indicate "Insufficient data for analysis" rather than generating unsupported insights
+
+### Credibility Over Completeness (CRITICAL)
+**Claude MUST prioritize credibility over producing content for every slide.**
+
+When a dashboard page has insufficient data:
+- ✅ **DO:** State explicitly "Insufficient data for insight generation"
+- ✅ **DO:** Explain what data would be needed: "This slide requires usage metrics to generate insights"
+- ✅ **DO:** Skip the slide entirely rather than generate generic content
+- ❌ **DON'T:** Generate vague insights to fill space
+- ❌ **DON'T:** Make assumptions about missing data
+- ❌ **DON'T:** Create generic statements without specific numbers
+
+**Why this matters:**
+- User trust depends on accuracy and honesty
+- One unsupported insight undermines confidence in all insights
+- Better to deliver 8 strong insights than 10 insights with 2 weak/generic ones
+- Acknowledging data gaps shows rigor and builds credibility
+
+**Examples:**
+
+✅ **Good (honest about limitations):**
+```
+Headline: "Insufficient data for analysis"
+Insight: "This dashboard page contains no extractable metrics. To generate insights, need: user counts, engagement metrics, or trend data."
+```
+
+❌ **Bad (forced generic content):**
+```
+Headline: "Platform shows potential for growth"
+Insight: "Usage patterns indicate opportunities exist across the organization"
+```
+
+**Implementation:**
+- If dashboard image shows no numbers → Skip or mark as "Insufficient data"
+- If only partial data visible → Generate insights only for available data, note gaps
+- If data present but unclear → Request clarification rather than guessing
+
+### Friendly vs. Critical Tone Examples
+
+| Critical (❌ Avoid) | Friendly (✅ Use) |
+|---------------------|------------------|
+| "Zero M365 Copilot adoption represents total deployment failure" | "M365 Copilot launch in progress - strong web chat base provides foundation" |
+| "Only 11% agent adoption shows massive awareness gap" | "134 Agent users from 1,275 total (11%) - significant expansion opportunity" |
+| "Critical blind spot preventing analysis" | "Opportunity to track engagement patterns for optimization" |
+| "58% abandonment rate signals value realization failure" | "36 agents marked as keepers from 85 created - healthy curation in progress" |
+
+---
+
 ## 6. Source Fidelity Rules
 
 1. All slide content MUST be from the provided source document.
@@ -93,7 +213,12 @@ Failure to comply with these rules is considered an error.
    - Use prior knowledge or training data
    - Make things up
    - Copy example content from reference templates
-6. If the source is insufficient to support a slide, Claude MUST state that limitation explicitly.
+   - Generate insights without supporting data from the source
+6. **If the source is insufficient to support a slide, Claude MUST state that limitation explicitly.**
+   - Mark slide as "Insufficient data for analysis"
+   - Explain what data would be needed to generate insights
+   - NEVER generate vague or generic content to fill the space
+   - Credibility over completeness: Skip slides rather than compromise trust
 
 ---
 ## 7. Text Boxes and Formatting Quality

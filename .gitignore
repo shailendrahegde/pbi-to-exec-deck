@@ -14,12 +14,18 @@ exec_deck_content.txt
 source_content.txt
 wpp22_content.txt
 output_content.txt
+output_check.txt
+dashboard_analysis.json
 
 # Extracted image directories
 extracted_images/
 
 # Task-specific Python scripts (users will use Claude to generate)
 create_exec_deck*.py
+
+# BUT keep the standard converters (not temp scripts)
+!convert_dashboard.py
+!convert_dashboard_v2.py
 
 # Unpacked PowerPoint directories
 source_unpacked/
@@ -41,6 +47,15 @@ __pycache__/
 *Executive Analytics*.pptx
 *_Executive_Deck.pptx
 Copilot_Analytics_Executive_Deck.pptx
+*_executive*.pptx
+*_executive_*.pptx
+wpp22*.pptx
+*_claude.pptx
+*_smart.pptx
+*_final.pptx
+
+# Temp directory with analysis files
+temp/
 
 # EXCEPT: Include the example storyboard template
 !Example-Storyboard-Analytics.pptx
