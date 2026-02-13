@@ -78,9 +78,9 @@ The script will:
 ## Sample Insights Generated
 
 **Real examples from dashboard conversions:**
-- "Client Finance achieves 217 prompts per user (5.7x average) - proven pattern to replicate"
+- "Finance achieves 217 prompts per user (5.7x average) - proven pattern to replicate"
 - "HR Generalists (22 users, 140 prompts) have embedded workflows - leverage as champions"
-- "Draft as IP Agent leads with 546 actions - successful use case to build on"
+- "SW Builder leads with 546 actions - successful use case to build on"
 
 ---
 
