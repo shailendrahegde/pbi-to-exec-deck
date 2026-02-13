@@ -25,23 +25,42 @@ Transform Power BI dashboards into executive-ready presentations with **analyst-
 
 ---
 
-## Quick Start (2 Steps)
+## Installation & Setup
+
+### Step 1: Clone the repository
+```bash
+git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
+cd pbi-to-exec-deck
+```
+
+### Step 2: Open in Claude Code
+```bash
+claude
+```
+
+That's it! All dependencies are already included. No API keys, no OCR installation required.
+
+---
+
+## Quick Start (3 Steps)
 
 ### 1. Export your Power BI dashboard
 - In Power BI: **File → Export → PowerPoint**
-- Save the `.pptx` file
+- Save the `.pptx` file to the project directory
 
 ### 2. Run the converter (single command)
 ```bash
 python convert_dashboard_claude.py --source "your-dashboard.pptx" --output "executive-deck.pptx"
 ```
 
-That's it! The script handles everything:
-- ✅ Extracts dashboard images
+### 3. Press Enter when prompted
+The script will:
+- ✅ Extract dashboard images
 - ✅ Claude automatically analyzes and generates insights
-- ✅ Builds your executive-ready presentation
+- ✅ Wait for you to press Enter
+- ✅ Build your executive-ready presentation
 
-**You'll press Enter once** after Claude finishes the analysis, then your deck is ready!
+**Done!** Open `executive-deck.pptx` to see your professional presentation.
 
 ---
 
@@ -53,17 +72,7 @@ That's it! The script handles everything:
 ✅ **Specific numbers** - Every insight backed by data
 ✅ **Friendly tone** - Opportunities, not criticisms
 ✅ **Fast** - Complete in under 30 seconds
-
----
-
-## Installation
-
-Already done if you're in this repo! Dependencies:
-- `python-pptx` ✓
-- `markitdown` ✓
-- `Pillow` ✓
-
-No OCR or API keys required.
+✅ **No setup required** - All dependencies included
 
 ---
 
