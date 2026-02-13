@@ -8,6 +8,22 @@ temp_*.pptx
 dashboard_slide_*.png
 source_content_analysis.json
 
+# Generated content and analysis files
+analytics_template.txt
+exec_deck_content.txt
+source_content.txt
+
+# Unpacked PowerPoint directories
+source_unpacked/
+template_unpacked/
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Project-specific generation scripts
+create_exec_deck.js
+
 # Python cache
 __pycache__/
 *.py[cod]

@@ -1,6 +1,6 @@
 # Claude PowerPoint Constitution
-Version: 1.5
-Effective Date: 2026-01-27
+Version: 1.6
+Effective Date: 2026-02-12
 
 ## 1. Purpose
 
@@ -18,7 +18,10 @@ Failure to comply with these rules is considered an error.
 3. Claude MUST NOT introduce external facts, benchmarks, assumptions, or interpretations not explicitly supported by the source.
 4. Claude MUST NOT insert stock images or decorative imagery.
 5. Claude MUST anchor layout and visual structure to the referenced templates in Section 11.
-6. Claude MUST explain any deviation from these rules explicitly before producing output.
+6. **Claude MUST ensure every number, organizational attribute, noun, and acronym is traceable to the source document.**
+7. **Claude MUST NOT include any content (text, numbers, examples) from reference templates in the final output - only styling and layout patterns.**
+8. **Claude MUST create properly formatted presentations with all elements within page boundaries - poor formatting is grounds for rejection.**
+9. Claude MUST explain any deviation from these rules explicitly before producing output.
 
 ---
 
@@ -70,20 +73,30 @@ Failure to comply with these rules is considered an error.
 ## 6. Source Fidelity Rules
 
 1. All slide content MUST be from the provided source document.
-2. Claude MUST NOT:
+2. **Every number, organizational attribute (department, organization, function), noun, and acronym in the output MUST be traceable to the source file.**
+   - If a specific department name appears in the output, it must exist in the source
+   - If a metric or number is cited, it must come directly from the source data
+   - No organizational details may be inferred or assumed
+3. **The reference template is for styling and layout reference ONLY.**
+   - ZERO content from the reference template (text, numbers, examples, department names) may appear in the final output
+   - Only visual styling, color schemes, and layout patterns should be borrowed from the reference template
+   - All substantive content must come exclusively from the provided source document
+4. Claude MUST NOT:
    - Bring in industry norms
    - Reference comparable companies
    - Use prior knowledge or training data
    - Make things up
-3. If the source is insufficient to support a slide, Claude MUST state that limitation explicitly.
+   - Copy example content from reference templates
+5. If the source is insufficient to support a slide, Claude MUST state that limitation explicitly.
 
 ---
-## 7. Text Boxes
+## 7. Text Boxes and Formatting Quality
 
 ### Layout & Page Boundaries
 - Claude MUST ensure that Text boxes **always remain fully within the page borders**.
 - Claude MUST ensure that Text boxes **do not extend into or overlap page margins**.
 - Claude MUST ensure that Text boxes **do not overflow** (no content or box edges may be rendered outside the printable/page boundary).
+- **⚠️ PENALTY WARNING:** Presentations with text boxes stretching beyond page margins, overlapping content, or poorly formatted layouts will be considered defective output and rejected.
 
 ### Text Wrapping & Overflow Handling
 - Claude MUST ensure that text inside text boxes **must wrap automatically** when it cannot fit on a single line.
@@ -94,7 +107,13 @@ Failure to comply with these rules is considered an error.
 - **Minimum font size:** 12 pt (must never be smaller).
 - **Preferred font size:** 14 pt.
 - **Preferred font family:** Segoe Sans Display.
-- If Segoe Sans Display is unavailable, use the closest approved fallback per the constitution’s typography rules, while still honoring the minimum font size requirement.
+- If Segoe Sans Display is unavailable, use the closest approved fallback per the constitution's typography rules, while still honoring the minimum font size requirement.
+
+### Quality Standards
+- All elements MUST be properly aligned and positioned within slide boundaries
+- Text MUST be readable with no clipping or truncation
+- Visual elements MUST NOT overlap unless intentionally designed for layering effect
+- Spacing between elements MUST be consistent and professional
 
 ## 8. Image Usage Rules
 
@@ -184,8 +203,10 @@ Claude MUST include the following section at the end of each response:
 
 ### Self-Audit
 - Constitution rules followed:
-- Compelling headlines and insightful key takeaways on every page
-- Reference templates used:
+- Compelling headlines and insightful key takeaways on every page:
+- Reference templates used (styling only, no content borrowed):
+- Source traceability verified (all numbers, departments, nouns, acronyms from source):
+- Formatting quality verified (no text boxes beyond margins, no overlapping elements):
 - Potential rule risks:
 - Source limitations encountered:
 - Any deviations (if applicable):
