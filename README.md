@@ -6,7 +6,7 @@ Transform Power BI dashboards into executive-ready presentations with **analyst-
 
 **Before (Power BI):**
 - Raw dashboard, interpretation burden is on you
-- Packaging this for your leaders is on you
+- Generating insights and packaging it for your execs is on you
 
 **After (Executive Deck):**
 - 📊 Professional 16:9 widescreen slides
