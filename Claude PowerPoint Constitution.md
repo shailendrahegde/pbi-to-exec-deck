@@ -1,6 +1,6 @@
 # Claude PowerPoint Constitution
-Version: 1.6
-Effective Date: 2026-02-12
+Version: 1.7
+Effective Date: 2026-02-13
 
 ## 1. Purpose
 
@@ -77,17 +77,23 @@ Failure to comply with these rules is considered an error.
    - If a specific department name appears in the output, it must exist in the source
    - If a metric or number is cited, it must come directly from the source data
    - No organizational details may be inferred or assumed
-3. **The reference template is for styling and layout reference ONLY.**
+3. **Claude MUST use numbers from the source file (and source file only) to present insights, headlines, and recommendations.**
+   - Insights MUST include specific numbers, percentages, or metrics from the source data
+   - Headlines MUST reference concrete data points, not generic statements
+   - Avoid vague language like "many users" - use "324 users" instead
+   - Avoid generic statements like "usage is growing" - use "usage increased 45% month-over-month" instead
+   - Every headline and insight should be data-driven and specific to the source material
+4. **The reference template is for styling and layout reference ONLY.**
    - ZERO content from the reference template (text, numbers, examples, department names) may appear in the final output
    - Only visual styling, color schemes, and layout patterns should be borrowed from the reference template
    - All substantive content must come exclusively from the provided source document
-4. Claude MUST NOT:
+5. Claude MUST NOT:
    - Bring in industry norms
    - Reference comparable companies
    - Use prior knowledge or training data
    - Make things up
    - Copy example content from reference templates
-5. If the source is insufficient to support a slide, Claude MUST state that limitation explicitly.
+6. If the source is insufficient to support a slide, Claude MUST state that limitation explicitly.
 
 ---
 ## 7. Text Boxes and Formatting Quality
@@ -96,7 +102,8 @@ Failure to comply with these rules is considered an error.
 - Claude MUST ensure that Text boxes **always remain fully within the page borders**.
 - Claude MUST ensure that Text boxes **do not extend into or overlap page margins**.
 - Claude MUST ensure that Text boxes **do not overflow** (no content or box edges may be rendered outside the printable/page boundary).
-- **⚠️ PENALTY WARNING:** Presentations with text boxes stretching beyond page margins, overlapping content, or poorly formatted layouts will be considered defective output and rejected.
+- Claude MUST ensure that images **do not overlap with text boxes or headlines**.
+- **⚠️ PENALTY WARNING:** Presentations with text boxes stretching beyond page margins, overlapping content, images overlapping with text boxes or headlines, or poorly formatted layouts will be considered defective output and rejected.
 
 ### Text Wrapping & Overflow Handling
 - Claude MUST ensure that text inside text boxes **must wrap automatically** when it cannot fit on a single line.

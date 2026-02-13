@@ -12,6 +12,14 @@ source_content_analysis.json
 analytics_template.txt
 exec_deck_content.txt
 source_content.txt
+wpp22_content.txt
+output_content.txt
+
+# Extracted image directories
+extracted_images/
+
+# Task-specific Python scripts (users will use Claude to generate)
+create_exec_deck*.py
 
 # Unpacked PowerPoint directories
 source_unpacked/
@@ -31,6 +39,8 @@ __pycache__/
 
 # Example outputs (users should generate their own)
 *Executive Analytics*.pptx
+*_Executive_Deck.pptx
+Copilot_Analytics_Executive_Deck.pptx
 
 # EXCEPT: Include the example storyboard template
 !Example-Storyboard-Analytics.pptx
@@ -39,6 +49,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 desktop.ini
+nul
+
+# Claude Code working directory
+.claude/
 
 # IDE files
 .vscode/

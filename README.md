@@ -62,6 +62,57 @@ Want to use your own corporate templates? Edit section 11 in `Claude PowerPoint 
 
 ---
 
+## Advanced Options
+
+### Skip Permission Prompts (Use with Caution)
+
+If you're running this in an automated workflow or want to skip permission prompts, you can run Claude Code in a less restrictive permission mode:
+
+**⚠️ WARNING:** This bypasses safety checks. Only use in trusted environments with trusted source files.
+
+**Option 1: Command-line flag**
+```bash
+claude --dangerously-disable-sandbox
+```
+
+**Option 2: Environment variable**
+```bash
+# Windows PowerShell
+$env:CLAUDE_DANGEROUSLY_DISABLE_SANDBOX="true"
+claude
+
+# Windows CMD
+set CLAUDE_DANGEROUSLY_DISABLE_SANDBOX=true
+claude
+
+# Linux/Mac
+export CLAUDE_DANGEROUSLY_DISABLE_SANDBOX=true
+claude
+```
+
+**Option 3: Permission mode setting**
+```bash
+# Set to auto-approve mode (less restrictive)
+claude --permission-mode auto
+```
+
+**What this does:**
+- Skips confirmation prompts for file reads/writes
+- Allows bash commands without approval
+- Enables faster automated processing
+
+**When to use:**
+- Batch processing multiple dashboards
+- CI/CD pipeline integration
+- Trusted environment with known inputs
+
+**When NOT to use:**
+- Processing files from untrusted sources
+- First-time testing
+- Production environments without review
+
+---
+
 ## Troubleshooting
 
 **Generic insights?**
