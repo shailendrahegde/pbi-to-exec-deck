@@ -243,6 +243,13 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
     print("=" * 70)
 
 
+def generate_output_filename(source_path):
+    """Generate output filename from source (e.g., dashboard.pptx -> dashboard_executive.pptx)"""
+    from pathlib import Path
+    source = Path(source_path)
+    return str(source.parent / f"{source.stem}_executive{source.suffix}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Convert Power BI dashboards using Claude Code for insights',
@@ -250,6 +257,9 @@ def main():
         epilog="""
 Examples:
   # Single command (automatic workflow):
+  python convert_dashboard_claude.py --source dashboard.pptx
+
+  # With custom output name:
   python convert_dashboard_claude.py --source dashboard.pptx --output executive.pptx
 
   # Manual workflow (step-by-step):
@@ -259,7 +269,7 @@ Examples:
     )
 
     parser.add_argument('--source', help='Source PowerPoint file')
-    parser.add_argument('--output', help='Output PowerPoint file')
+    parser.add_argument('--output', help='Output PowerPoint file (default: source_executive.pptx)')
     parser.add_argument('--prepare', action='store_true',
                        help='Prepare slides for Claude analysis (Step 1 only)')
     parser.add_argument('--build', action='store_true',
@@ -272,12 +282,14 @@ Examples:
     # ========================================================================
     # SINGLE-COMMAND WORKFLOW: Orchestrate all 3 steps automatically
     # ========================================================================
-    if args.source and args.output and not args.prepare and not args.build:
+    if args.source and not args.prepare and not args.build:
+        # Auto-generate output filename if not provided
+        output_path = args.output or generate_output_filename(args.source)
         print("\n" + "=" * 70)
         print("AUTOMATED CONVERSION WORKFLOW")
         print("=" * 70)
         print(f"\nSource: {args.source}")
-        print(f"Output: {args.output}")
+        print(f"Output: {output_path}")
         print("\nThis will run all 3 steps automatically:")
         print("  1. Extract dashboard images")
         print("  2. Claude analyzes and generates insights")
@@ -301,12 +313,12 @@ Examples:
         print("\n" + "=" * 70)
         print("STEP 3: BUILDING PRESENTATION")
         print("=" * 70)
-        build_presentation_from_insights(args.source, args.output, args.insights)
+        build_presentation_from_insights(args.source, output_path, args.insights)
 
         print("\n" + "=" * 70)
         print("✓ CONVERSION COMPLETE!")
         print("=" * 70)
-        print(f"\nExecutive presentation created: {args.output}")
+        print(f"\nExecutive presentation created: {output_path}")
         return 0
 
     # ========================================================================
@@ -323,16 +335,15 @@ Examples:
 
     elif args.build:
         # Step 3: Build final presentation
-        if not args.output:
-            print("Error: --output required for --build")
-            return 1
-
         # Get source from request file
         with open('temp/analysis_request.json', 'r') as f:
             request = json.load(f)
             source_path = request['source_file']
 
-        build_presentation_from_insights(source_path, args.output, args.insights)
+        # Auto-generate output filename if not provided
+        output_path = args.output or generate_output_filename(source_path)
+
+        build_presentation_from_insights(source_path, output_path, args.insights)
 
     else:
         parser.print_help()

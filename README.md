@@ -49,8 +49,10 @@ That's it! All dependencies are already included. No API keys, no OCR installati
 
 ### 2. Run the converter (single command, within Claude Code)
 ```bash
-python convert_dashboard_claude.py --source "your-dashboard.pptx" --output "executive-deck.pptx"
+python convert_dashboard_claude.py --source "your-dashboard.pptx"
 ```
+
+This will automatically create `your-dashboard_executive.pptx` (or use `--output` for a custom name).
 
 ### 3. Press Enter when prompted
 The script will:
@@ -59,7 +61,7 @@ The script will:
 - ✅ Wait for you to press Enter
 - ✅ Build your executive-ready presentation
 
-**Done!** Open `executive-deck.pptx` to see your professional presentation.
+**Done!** Open `your-dashboard_executive.pptx` to see your professional presentation.
 
 ---
 
@@ -103,8 +105,9 @@ A: Use `--prepare` and `--build` flags separately:
 ```bash
 python convert_dashboard_claude.py --source "dashboard.pptx" --prepare
 # Then tell Claude to analyze
-python convert_dashboard_claude.py --build --output "executive.pptx"
+python convert_dashboard_claude.py --build
 ```
+Output will be auto-generated as `dashboard_executive.pptx`
 
 **Q: Want different insight style?**
 A: Edit the insights in `temp/claude_insights.json` before pressing Enter to continue
@@ -149,9 +152,9 @@ Process multiple dashboards one at a time:
 ```bash
 # Process each dashboard with single command
 for file in dashboards/*.pptx; do
-    output="${file%.pptx}_executive.pptx"
-    python convert_dashboard_claude.py --source "$file" --output "$output"
+    python convert_dashboard_claude.py --source "$file"
     # Script will pause for Claude analysis, then press Enter
+    # Output: dashboards/filename_executive.pptx
 done
 ```
 

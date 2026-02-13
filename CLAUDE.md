@@ -20,8 +20,10 @@ This project converts Power BI dashboard exports (.pptx) into executive-ready an
 When a user requests dashboard conversion, they run a **single command** that orchestrates all steps:
 
 ```bash
-python convert_dashboard_claude.py --source "dashboard.pptx" --output "executive.pptx"
+python convert_dashboard_claude.py --source "dashboard.pptx"
 ```
+
+The output file will be automatically named `dashboard_executive.pptx` (or use `--output` for a custom name).
 
 ### What Happens Automatically:
 
