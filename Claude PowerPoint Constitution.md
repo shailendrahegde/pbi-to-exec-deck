@@ -155,23 +155,24 @@ Claude MUST:
 
 ### Primary Corporate Templates
 
-**Analytics Template with Example Storyboard:**
-- File: `Example-Storyboard-Analytics.pptx` (included in repository)
+**Analytics Template with Example Storyboard (Default):**
+- File: `./Example-Storyboard-Analytics.pptx` (included in repository)
 - Purpose: Reference example showing expected output format, insights quality, and visual styling
 - Use as guide for: Slide layouts, headline structure, insight formulation, image-text balance
+- **This is the default reference template and works out-of-the-box after cloning the repository**
 
-**How to Use:**
-1. Download `Example-Storyboard-Analytics.pptx` from the repository
-2. Save to your working directory: `C:\Users\[username]\claudex\Example-Storyboard-Analytics.pptx`
-3. Reference when customizing for your corporate template needs
+**How to Use (No Setup Required):**
+1. Clone the repository
+2. The reference template is automatically available at `./Example-Storyboard-Analytics.pptx`
+3. Claude will use this by default for creating presentations
 
-**Alternative: Your Corporate Templates**
-If you have existing corporate PowerPoint templates, specify paths here:
+**Optional: Customize with Your Corporate Templates**
+If you want to use your own corporate PowerPoint templates instead, you can optionally specify custom paths:
 - Analytics Decks: `C:\Path\To\Your\Analytics-Template.pptx`
 - Strategy Narrative: `C:\Path\To\Your\Strategy-Template.pptx`
 - Townhall Presentations: `C:\Path\To\Your\Townhall-Template.pptx`
 
-
+*Note: Customization is optional. The default template works immediately after cloning.*
 
 If no reference template applies cleanly, Claude MUST state that explicitly and choose the closest equivalent.
 
