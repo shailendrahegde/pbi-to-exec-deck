@@ -61,7 +61,7 @@ class SlideBuilder:
         self.prs.slide_height = int(self.style.SLIDE_HEIGHT)
 
     def add_title_slide(self, title: str, subtitle: str = ""):
-        """Add title slide"""
+        """Add title slide with footer disclaimer"""
         slide_layout = self.prs.slide_layouts[0]  # Title layout
         slide = self.prs.slides.add_slide(slide_layout)
 
@@ -75,6 +75,22 @@ class SlideBuilder:
             subtitle_shape = slide.placeholders[1]
             subtitle_shape.text = subtitle
             self._style_text(subtitle_shape.text_frame, font_size=Pt(18), color=self.style.DARK_GRAY)
+
+        # Add footer disclaimer
+        footer_left = self.style.MARGIN
+        footer_top = self.style.SLIDE_HEIGHT - Inches(1)
+        footer_width = self.style.SLIDE_WIDTH - (2 * self.style.MARGIN)
+        footer_height = Inches(0.5)
+
+        footer_box = slide.shapes.add_textbox(footer_left, footer_top, footer_width, footer_height)
+        footer_frame = footer_box.text_frame
+        footer_frame.text = "AI generated. Verify before sharing"
+        self._style_text(
+            footer_frame,
+            font_size=Pt(10),
+            color=self.style.DARK_GRAY,
+            alignment=PP_ALIGN.CENTER
+        )
 
         return slide
 
