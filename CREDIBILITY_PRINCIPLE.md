@@ -214,6 +214,55 @@ Insight: "Dashboard image resolution or visualization format prevents extracting
 
 ---
 
+## Data Accuracy Rules (CRITICAL)
+
+### Rule 1: Only Mention What's Visible
+**Every entity mentioned in insights MUST be visible on the dashboard page.**
+
+❌ **WRONG:** "Teams integration shows 3x higher engagement than Outlook"
+- If "Teams" and "Outlook" are not visible as labels/categories on this specific page
+
+✅ **RIGHT:** Only mention platforms, teams, functions, departments, or any nouns that are explicitly shown in the visual
+
+**Examples of entities that must be visible:**
+- Platform names (Teams, Outlook, Excel, PowerPoint, etc.)
+- Department names (Finance, HR, IT, Sales, etc.)
+- Feature names (Chat, Agents, Copilot, etc.)
+- Team names, location names, product names
+
+**Test:** Can I point to the exact spot on the dashboard where this name appears?
+- **YES** → Safe to mention in insight
+- **NO** → Do NOT mention, even if you think it's likely
+
+### Rule 2: Match Number Units Exactly
+**Numbers and units MUST match exactly what's shown in the visual.**
+
+❌ **WRONG Examples:**
+- Dashboard shows "13" → Insight says "13K actions" (incorrect unit)
+- Dashboard shows "13K" → Insight says "13,000 actions" (unit mismatch)
+- Dashboard shows "13M" → Insight says "13 million" (format mismatch)
+- Dashboard shows "13.5K" → Insight says "13K" (precision lost)
+
+✅ **RIGHT Examples:**
+- Dashboard shows "13" → Insight says "13 actions"
+- Dashboard shows "13K" → Insight says "13K actions"
+- Dashboard shows "13M" → Insight says "13M actions"
+- Dashboard shows "13.5K" → Insight says "13.5K actions"
+
+**Critical:** Mismatched units destroy credibility instantly. Users will catch this.
+
+### Rule 3: Numbers Must Be Traceable
+**Every number in an insight must be directly attributable to something visible on the page.**
+
+**Test for each number:**
+1. Can I point to where this exact number appears on the dashboard?
+2. Is the unit (K, M, %, etc.) exactly as shown?
+3. If it's a calculation (e.g., percentage, ratio), are both source numbers visible?
+
+**If answer is NO to any question → Do NOT use that number**
+
+---
+
 ## Key Principles
 
 ### 1. One Generic Insight Undermines Ten Strong Ones
@@ -230,6 +279,12 @@ Missing data is feedback for dashboard improvement, not analysis failure
 
 ### 5. Trust Is Fragile, Hard to Rebuild
 Lose credibility once → very difficult to regain
+
+### 6. Every Entity Must Be Visible
+Never mention platforms, teams, or any nouns not shown on the page
+
+### 7. Units Must Match Exactly
+13 ≠ 13K ≠ 13M — use exactly what the visual shows
 
 ---
 

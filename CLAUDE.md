@@ -130,11 +130,24 @@ Frame observations as opportunities rather than problems:
 - ✅ "Opportunity to expand agent adoption from 11% to 30%"
 - ❌ "Only 11% adoption shows deployment failure"
 
-### ✅ DO: Provide Specific Numbers
+### ✅ DO: Provide Specific Numbers (Match Units Exactly)
 
 Every headline and at least one insight should include concrete numbers:
 - ✅ "217 prompts per user (5.7x average) demonstrates high-value workflow"
 - ❌ "Some users show higher engagement than others"
+
+**CRITICAL: Match number units EXACTLY as shown in the visual:**
+- Dashboard shows "13" → Use "13 actions" (NOT "13K")
+- Dashboard shows "13K" → Use "13K actions" (NOT "13,000" or "13")
+- Dashboard shows "13M" → Use "13M actions" (NOT "13 million")
+- Dashboard shows "13.5K" → Use "13.5K actions" (NOT "13K")
+
+**Test each number:**
+1. Can I point to this exact number on the dashboard?
+2. Does the unit (K, M, %, decimal) match exactly?
+3. If NO to either → Do NOT use that number
+
+**Why this matters:** Unit mismatches (13 vs 13K) destroy credibility instantly
 
 ### ✅ DO: Answer "So What?"
 
@@ -144,24 +157,37 @@ Every insight should help IT decision maker take action:
 
 ### ✅ DO: Analyze Platform/Feature Patterns
 
-Always look for and call out platform, app, or feature variations:
-- ✅ "Teams integration shows 3x higher engagement than Outlook - indicates collaborative workflows drive value"
-- ✅ "PowerPoint Copilot leads with 450 actions while Excel shows only 89 - content creation is primary use case"
-- ✅ "Chat (Web) dominates with 1,275 users while M365 integrated version shows zero adoption - integration barrier to investigate"
-- ❌ "Users engage with the platform" (missing which platform/feature)
+**CRITICAL: Only mention entities (platforms, teams, features) that are VISIBLE on the dashboard page.**
 
-**What to look for:**
+Always look for and call out platform, app, or feature variations **IF they appear on the visual:**
+- ✅ "Teams integration shows 3x higher engagement than Outlook" — **ONLY if both "Teams" and "Outlook" are visible on this page**
+- ✅ "PowerPoint Copilot leads with 450 actions while Excel shows only 89" — **ONLY if both apps are shown on this page**
+- ✅ "Chat (Web) dominates with 1,275 users" — **ONLY if "Chat (Web)" label is visible on this page**
+- ❌ "Users engage with the platform" (missing which platform/feature)
+- ❌ Mentioning "Teams" when it's not shown on this specific page
+
+**Rule: Can you point to where this name appears on the dashboard?**
+- **YES** → Safe to mention
+- **NO** → Do NOT mention, even if you think it's on other pages
+
+**What to look for (only if visible on this page):**
 - Microsoft 365 apps: Outlook, Teams, Word, Excel, PowerPoint, OneNote
 - Copilot features: Chat, Agents, M365 Copilot, Business Chat
 - Integration patterns: Web vs. integrated, standalone vs. embedded
 - Feature adoption: Which capabilities drive engagement
 - Platform concentration: Where is usage concentrated
+- Department names, team names, location names
 
 **Why this matters:**
 - Reveals which workflows deliver value (content creation vs. analysis vs. communication)
 - Identifies integration successes and failures
 - Shows where to focus training and enablement
 - Guides feature prioritization decisions
+
+**Why the visibility rule matters:**
+- Every claim must be verifiable from the visual
+- Users will check if "Teams" actually appears on that page
+- One unverifiable claim destroys credibility
 
 ### ❌ DON'T: Be Critical or Verbose
 
@@ -268,13 +294,15 @@ Example: "Pilot training program with top 3 departments to reach 50+ prompts/use
 After generating insights, verify:
 
 ✅ **Every headline has specific number** (not "some users" or "many")
+✅ **Number units match exactly** (13 vs 13K vs 13M - use what's shown)
+✅ **All entities are visible** (platforms, teams, features mentioned are on this page)
 ✅ **Insights are concise** (1-2 sentences each, not paragraphs)
 ✅ **Tone is friendly** (opportunities, not failures)
 ✅ **Focus on action** (what to do, not just what is)
-✅ **Numbers are traceable** (came from the dashboard image)
+✅ **Numbers are traceable** (can point to exact location on dashboard)
 ✅ **No criticism** (don't critique the analytics or report)
 ✅ **No forced insights** (if no data, mark "Insufficient data" rather than generating generic content)
-✅ **Platform patterns identified** (mention specific apps/features when visible)
+✅ **Platform patterns identified** (mention specific apps/features ONLY when visible on this page)
 
 ---
 
