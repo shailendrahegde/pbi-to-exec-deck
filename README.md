@@ -60,12 +60,10 @@ That's it! All dependencies are already included. No API keys, no OCR installati
 ### 2. Run the converter (single command)
 
 ```bash
-python convert_dashboard_claude.py --source "your-dashboard.pptx" --auto
-# OR
 python convert_dashboard_claude.py --source "your-dashboard.pdf" --auto
 ```
 
-This will automatically create `your-dashboard_executive.pptx` (or use `--output` for a custom name).
+Works with both `.pdf` and `.pptx` files. Output will be `your-dashboard_executive.pptx` (or use `--output` for a custom name).
 
 ### 3. Workflow completion
 The script will:
