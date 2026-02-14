@@ -1,17 +1,26 @@
 # Power BI to Executive Deck Converter
 
-Transform Power BI dashboards into executive-ready presentations with **analyst-grade insights** in under 30 seconds.
+## Stop Wrestling with Slides. Start Impressing Executives.
 
-## What You Get
+You're staring at Power BI dashboards full of data. Your executive presentation is due tomorrow. You know building slides is hard. Extracting meaningful insights? Even harder. Packaging everything into an executive-ready deck? Downright daunting.
 
-**Before (Power BI):**
-- Raw dashboard, interpretation burden is on you
-- Generating insights and packaging it for your execs is on you
+**We get it. This tool takes that entire burden away.**
 
-**After (Executive Deck):**
-- 📊 Professional 16:9 widescreen slides
-- 💡 Compelling and actionable insights
-- ⚡ Generated in < 30 seconds
+In under 30 seconds, transform raw Power BI dashboards into polished, analyst-grade presentations that make you look like a strategic advisor, not just a data reporter.
+
+## The Problem This Solves
+
+❌ **Building slides takes hours** - Layout, formatting, making it look professional
+❌ **Extracting insights is hard** - What story does this data tell? What actions should we take?
+❌ **Executives want answers, not charts** - They need "so what" insights, not raw numbers
+❌ **You're not a presentation designer** - Most people aren't, and that's okay
+
+## What You Get Instead
+
+✅ **Professional 16:9 slides** - No design skills needed, looks like a consultancy delivered it
+✅ **Analyst-grade insights** - Every number tells a story with actionable recommendations
+✅ **30 seconds flat** - Not 3 hours. Not 30 minutes. Literally 30 seconds.
+✅ **Executive-ready language** - Friendly, strategic, opportunity-focused insights that land
 
 ### Example Transformation
 
