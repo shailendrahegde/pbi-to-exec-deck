@@ -186,4 +186,8 @@ MIT - Use freely for your organization
 
 **You'll have a professional executive deck in under 30 seconds.**
 
+---
+
+**Found this useful?** ⭐ [Star this repo](https://github.com/shailendrahegde/pbi-to-exec-deck) to help others discover it!
+
 That's it! 🚀
