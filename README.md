@@ -110,27 +110,6 @@ The script will:
 
 ---
 
-## Need Help?
-
-**Common issues:**
-
-**Q: Want to run steps manually?**
-A: Use `--prepare` and `--build` flags separately:
-```bash
-python convert_dashboard_claude.py --source "dashboard.pptx" --prepare
-# Then tell Claude to analyze
-python convert_dashboard_claude.py --build
-```
-Output will be auto-generated as `dashboard_executive.pptx`
-
-**Q: Want different insight style?**
-A: Edit the insights in `temp/claude_insights.json` before pressing Enter to continue
-
-**Q: Claude didn't see the analysis request?**
-A: Explicitly say: "Analyze the dashboards in temp/analysis_request.json and save to temp/claude_insights.json"
-
----
-
 ## Key Files
 
 - `convert_dashboard_claude.py` - Main converter
@@ -138,41 +117,7 @@ A: Explicitly say: "Analyze the dashboards in temp/analysis_request.json and sav
 - `Claude PowerPoint Constitution.md` - Quality standards
 - `Example-Storyboard-Analytics.pptx` - Visual template reference
 
----
 
-## Insight Quality Examples
-
-### ✅ Good (What You'll Get)
-- Concise (1-2 sentences)
-- Specific numbers included
-- Friendly opportunity framing
-- Actionable recommendation
-
-**Example:** "HR Generalists (140 actions/user) are 3-4x above average - great candidates to champion agent adoption across their teams"
-
-### ❌ Bad (What We Avoid)
-- Verbose paragraphs
-- Generic statements without numbers
-- Critical/negative tone
-- No actionable takeaway
-
-**Example:** "The data shows that there are users with varying levels of engagement across different departments which may indicate potential areas for improvement"
-
----
-
-## Advanced: Batch Processing
-
-Process multiple dashboards one at a time:
-```bash
-# Process each dashboard with single command
-for file in dashboards/*.pptx; do
-    python convert_dashboard_claude.py --source "$file"
-    # Script will pause for Claude analysis, then press Enter
-    # Output: dashboards/filename_executive.pptx
-done
-```
-
----
 
 ## License
 
