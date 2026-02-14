@@ -43,23 +43,41 @@ That's it! All dependencies are already included. No API keys, no OCR installati
 ## Quick Start (3 Steps)
 
 ### 1. Export your Power BI dashboard
-- If you are in PBI Desktop, publish the report to PBI Online in My Workspace
+
+**Option A: PDF Export (from Power BI Desktop)**
+- In Power BI Desktop: **File → Export → Export to PDF**
+- Exports all dashboard pages as PDF
+- Save the `.pdf` file to the project directory
+
+**Option B: PPTX Export (from Power BI Online)**
+- Publish your report from PBI Desktop to Power BI Online (My Workspace)
 - In Power BI Online: **File → Export → PowerPoint**
+- Exports dashboard as PPTX with static images
 - Save the `.pptx` file to the project directory
 
+**Both formats work identically** - the converter produces the same high-quality executive presentation output
+
 ### 2. Run the converter (single command, within Claude Code)
+
+**For Claude Code (recommended):**
+```bash
+python convert_dashboard_claude.py --source "your-dashboard.pptx" --auto
+# OR
+python convert_dashboard_claude.py --source "your-dashboard.pdf" --auto
+```
+
+**For interactive terminal:**
 ```bash
 python convert_dashboard_claude.py --source "your-dashboard.pptx"
 ```
 
 This will automatically create `your-dashboard_executive.pptx` (or use `--output` for a custom name).
 
-### 3. Press Enter when prompted
+### 3. Workflow completion
 The script will:
-- ✅ Extract dashboard images
+- ✅ Extract dashboard images (PDF or PPTX)
 - ✅ Claude automatically analyzes and generates insights
-- ✅ Wait for you to press Enter
-- ✅ Build your executive-ready presentation
+- ✅ Build your executive-ready presentation (16:9 PPTX format)
 
 **Done!** Open `your-dashboard_executive.pptx` to see your professional presentation.
 

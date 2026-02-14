@@ -4,7 +4,12 @@ This file provides persistent instructions for Claude when working in this proje
 
 ## Project Overview
 
-This project converts Power BI dashboard exports (.pptx) into executive-ready analytics presentations with **compelling, analyst-grade insights** using Claude's vision and analytical capabilities.
+This project converts Power BI dashboard exports (.pptx or .pdf) into executive-ready analytics presentations with **compelling, analyst-grade insights** using Claude's vision and analytical capabilities.
+
+**Supported Input Formats:**
+- PowerPoint (.pptx) - Exported from Power BI
+- PDF (.pdf) - Exported from Power BI
+- **Note:** Both formats produce identical output quality (16:9 PPTX)
 
 ## Core Philosophy
 
@@ -28,9 +33,12 @@ The output file will be automatically named `dashboard_executive.pptx` (or use `
 ### What Happens Automatically:
 
 **Step 1: Extract (5 seconds)**
-- Script extracts each dashboard slide as PNG image to `temp/` directory
-- **Automatically skips first slide** (title page with metadata like "last refreshed", "view in PowerBI")
-- Parses slide titles and structure
+- Script extracts each dashboard slide/page as PNG image to `temp/` directory
+- **For PPTX:** Extracts embedded images from slides
+- **For PDF:** Converts each page to PNG image at 150 DPI
+- **PPTX workflow:** Automatically skips first slide (title page with metadata like "last refreshed", "view in PowerBI")
+- **PDF workflow:** Includes all pages (PDF exports typically have dashboard content on page 1)
+- Parses slide/page titles and structure
 - Creates `temp/analysis_request.json` with slide metadata
 
 **Step 2: Claude Analysis (You!)**
@@ -113,6 +121,8 @@ python convert_dashboard_claude.py --build --output "executive.pptx"
 ---
 
 ## Insight Generation Guidelines
+
+**CRITICAL: Before analyzing any dashboard, read `DASHBOARD_READING_RULES.md` for data extraction accuracy rules.**
 
 When generating insights (Step 2), follow these principles:
 
@@ -271,6 +281,25 @@ Example: "Pilot training program with top 3 departments to reach 50+ prompts/use
 - **CRITICAL: Identify platforms, apps, and features** (Outlook, Teams, PowerPoint, Excel, Agents, Chat, etc.)
 - Notice engagement variations across different platforms/features
 - Use platform patterns to identify high-value workflows
+
+### Data Extraction Accuracy Rules (CRITICAL)
+
+**Read `DASHBOARD_READING_RULES.md` for complete guidelines. Key rules:**
+
+1. **Match numbers to EXACT labels** - Read table labels carefully; "Team C: 73,071" not "Team B: 73,071"
+2. **Never assume first row is aggregate** - Read actual label; could be "Team B" not "Total"
+3. **Read chart axes precisely** - Verify scale/units; don't guess values
+4. **Identify selected filters** - Black/highlighted = active; chart shows only selected filter data
+5. **Match units exactly** - "13K" shown → write "13K" (not "13,000")
+6. **User categories exact** - "148 Unlicensed" not "148 Bottom 25%" if label differs
+7. **Only cite visible numbers** - Can you point to it? If no, don't use it
+
+**Pre-analysis checklist for each page:**
+- [ ] Identify filter selections (black vs grey elements)
+- [ ] Read all table row/column labels
+- [ ] Check chart axis scales and units
+- [ ] Read legend for color meanings
+- [ ] Verify every number matches its label
 
 ### Slide Types to Recognize
 - **Trends:** Time-series charts → Focus on momentum, growth, patterns

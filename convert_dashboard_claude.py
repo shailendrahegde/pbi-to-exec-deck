@@ -19,6 +19,7 @@ from pathlib import Path
 from pptx import Presentation
 from PIL import Image
 import io
+from lib.extraction.pdf_extractor import prepare_pdf_for_claude_analysis
 
 
 def extract_slide_as_image(prs, slide_idx, output_path):
@@ -68,12 +69,45 @@ def classify_slide_type(title):
         return 'general'
 
 
+def detect_file_type(file_path):
+    """
+    Detect if file is PPTX or PDF based on extension.
+
+    Args:
+        file_path: Path to input file
+
+    Returns:
+        'pptx' or 'pdf'
+
+    Raises:
+        ValueError: If file type is unsupported
+    """
+    suffix = Path(file_path).suffix.lower()
+    if suffix == '.pptx':
+        return 'pptx'
+    elif suffix == '.pdf':
+        return 'pdf'
+    else:
+        raise ValueError(f"Unsupported file type: {suffix}. Supported formats: .pptx, .pdf")
+
+
 def prepare_for_claude_analysis(source_path):
     """
-    Extract slides and prepare analysis request for Claude.
+    Extract slides/pages and prepare analysis request for Claude.
+    Supports both .pptx and .pdf input files.
 
-    Returns the analysis request structure.
+    Args:
+        source_path: Path to source file (.pptx or .pdf)
+
+    Returns:
+        Path to analysis_request.json file
     """
+    file_type = detect_file_type(source_path)
+
+    if file_type == 'pdf':
+        return prepare_pdf_for_claude_analysis(source_path)
+
+    # Original PPTX logic continues below
     print("=" * 70)
     print("PREPARING SLIDES FOR CLAUDE ANALYSIS")
     print("=" * 70)
@@ -247,7 +281,8 @@ def generate_output_filename(source_path):
     """Generate output filename from source (e.g., dashboard.pptx -> dashboard_executive.pptx)"""
     from pathlib import Path
     source = Path(source_path)
-    return str(source.parent / f"{source.stem}_executive{source.suffix}")
+    # Output is always .pptx regardless of input format (PPTX or PDF)
+    return str(source.parent / f"{source.stem}_executive.pptx")
 
 
 def main():
@@ -259,6 +294,12 @@ Examples:
   # Single command (automatic workflow):
   python convert_dashboard_claude.py --source dashboard.pptx
 
+  # With PDF input:
+  python convert_dashboard_claude.py --source dashboard.pdf
+
+  # Auto mode (non-interactive, for Claude Code):
+  python convert_dashboard_claude.py --source dashboard.pptx --auto
+
   # With custom output name:
   python convert_dashboard_claude.py --source dashboard.pptx --output executive.pptx
 
@@ -268,7 +309,7 @@ Examples:
 """
     )
 
-    parser.add_argument('--source', help='Source PowerPoint file')
+    parser.add_argument('--source', help='Source PowerPoint or PDF file')
     parser.add_argument('--output', help='Output PowerPoint file (default: source_executive.pptx)')
     parser.add_argument('--prepare', action='store_true',
                        help='Prepare slides for Claude analysis (Step 1 only)')
@@ -276,6 +317,8 @@ Examples:
                        help='Build final presentation from Claude insights (Step 3 only)')
     parser.add_argument('--insights', default='temp/claude_insights.json',
                        help='Path to Claude insights JSON (default: temp/claude_insights.json)')
+    parser.add_argument('--auto', action='store_true',
+                       help='Auto mode: skip interactive prompt (for non-interactive environments)')
 
     args = parser.parse_args()
 
@@ -305,9 +348,15 @@ Examples:
         trigger_claude_analysis(request_file)
 
         # Wait for user confirmation after Claude generates insights
-        print("\n" + "=" * 70)
-        input("Press ENTER after Claude has generated insights...")
-        print("=" * 70)
+        # (skip in auto mode for non-interactive environments)
+        if not args.auto:
+            print("\n" + "=" * 70)
+            input("Press ENTER after Claude has generated insights...")
+            print("=" * 70)
+        else:
+            print("\n" + "=" * 70)
+            print("AUTO MODE: Proceeding without user confirmation...")
+            print("=" * 70)
 
         # STEP 3: Build final presentation
         print("\n" + "=" * 70)
@@ -316,7 +365,7 @@ Examples:
         build_presentation_from_insights(args.source, output_path, args.insights)
 
         print("\n" + "=" * 70)
-        print("✓ CONVERSION COMPLETE!")
+        print("CONVERSION COMPLETE!")
         print("=" * 70)
         print(f"\nExecutive presentation created: {output_path}")
         return 0

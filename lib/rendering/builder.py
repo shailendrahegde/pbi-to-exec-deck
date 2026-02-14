@@ -65,14 +65,31 @@ class SlideBuilder:
         slide_layout = self.prs.slide_layouts[0]  # Title layout
         slide = self.prs.slides.add_slide(slide_layout)
 
-        # Set title
+        # Define consistent positioning for title and subtitle
+        title_left = self.style.MARGIN
+        title_width = self.style.SLIDE_WIDTH - (2 * self.style.MARGIN)
+        title_top = Inches(2.5)
+        title_height = Inches(1.5)
+
+        subtitle_top = Inches(4.2)
+        subtitle_height = Inches(1.0)
+
+        # Set title with explicit dimensions
         title_shape = slide.shapes.title
+        title_shape.left = title_left
+        title_shape.top = title_top
+        title_shape.width = title_width
+        title_shape.height = title_height
         title_shape.text = title
         self._style_text(title_shape.text_frame, font_size=Pt(32), bold=True, color=self.style.DARK_BLUE)
 
-        # Set subtitle if provided
+        # Set subtitle if provided (aligned with title, explicit dimensions)
         if subtitle and len(slide.placeholders) > 1:
             subtitle_shape = slide.placeholders[1]
+            subtitle_shape.left = title_left
+            subtitle_shape.top = subtitle_top
+            subtitle_shape.width = title_width
+            subtitle_shape.height = subtitle_height
             subtitle_shape.text = subtitle
             self._style_text(subtitle_shape.text_frame, font_size=Pt(18), color=self.style.DARK_GRAY)
 
@@ -291,6 +308,37 @@ class SlideBuilder:
         self.prs.save(output_path)
 
 
+def _get_source_images_from_temp(source_path: str) -> Dict[int, str]:
+    """
+    Get already-extracted images from temp/ directory.
+    Used when source is PDF (images already extracted during prepare phase).
+
+    Args:
+        source_path: Path to source file (used for validation)
+
+    Returns:
+        Dictionary mapping slide_number → image_path
+    """
+    import json
+
+    try:
+        with open('temp/analysis_request.json', 'r', encoding='utf-8') as f:
+            request = json.load(f)
+
+        # Build mapping of slide number to image path
+        image_map = {}
+        for slide_info in request.get('slides', []):
+            slide_num = slide_info['slide_number']
+            image_path = slide_info['image_path']
+            image_map[slide_num] = image_path
+
+        return image_map
+
+    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+        print(f"  WARNING: Could not load temp images: {e}")
+        return {}
+
+
 def extract_slide_image(source_prs: Presentation, slide_number: int) -> Optional[Image.Image]:
     """
     Extract screenshot from source slide.
@@ -327,14 +375,26 @@ def render_presentation(
 ):
     """
     Main entry point: Render executive presentation.
+    Supports both .pptx and .pdf source files.
 
     Args:
-        source_path: Path to source PowerPoint
+        source_path: Path to source file (.pptx or .pdf)
         insights: Dictionary of slide titles to Insights
         output_path: Path for output PowerPoint
     """
-    # Load source presentation
-    source_prs = Presentation(source_path)
+    file_type = Path(source_path).suffix.lower()
+
+    # For PDF sources, images are already in temp/ directory
+    # For PPTX sources, we load the presentation directly
+    if file_type == '.pdf':
+        # Create a dummy presentation (not used for image extraction)
+        from pptx import Presentation as PrsClass
+        source_prs = PrsClass()
+        source_images_map = _get_source_images_from_temp(source_path)
+    else:
+        # Load source presentation for PPTX
+        source_prs = Presentation(source_path)
+        source_images_map = None
 
     # Create builder
     builder = SlideBuilder(source_prs)
@@ -348,32 +408,66 @@ def render_presentation(
     # Add content slides
     slide_mapping = {}  # Track which source slides we've processed
 
-    for slide_idx, slide in enumerate(source_prs.slides):
-        # Extract slide title (first shape with text, typically)
-        slide_title = ""
-        for shape in slide.shapes:
-            if hasattr(shape, "text") and shape.text.strip():
-                slide_title = shape.text.strip()
-                break
+    # For PDF sources, iterate through insights directly (no source slides to iterate)
+    # For PPTX sources, iterate through source slides as before
+    if source_images_map is not None:
+        # PDF workflow: Use temp/ images and insights mapping
+        for title, insight in insights.items():
+            # Find slide number from analysis request
+            # We'll iterate through the map to find the matching title
+            source_image = None
+            slide_num = None
 
-        # Remove emoji characters to match parsed titles
-        import re
-        slide_title_clean = re.sub(r'[\U00010000-\U0010ffff]', '', slide_title).strip()
+            # Load analysis request to get slide numbers
+            import json
+            try:
+                with open('temp/analysis_request.json', 'r', encoding='utf-8') as f:
+                    request = json.load(f)
+                    for slide_info in request.get('slides', []):
+                        if slide_info['title'] == title:
+                            slide_num = slide_info['slide_number']
+                            image_path = source_images_map.get(slide_num)
+                            if image_path and Path(image_path).exists():
+                                source_image = Image.open(image_path)
+                            break
+            except Exception:
+                pass
 
-        # Find matching insight
-        insight = insights.get(slide_title_clean)
+            if source_image and slide_num:
+                builder.add_insight_slide(
+                    slide_number=slide_num,
+                    headline=insight.headline,
+                    insights=insight.bullet_points,
+                    source_image=source_image
+                )
+    else:
+        # PPTX workflow: Original logic
+        for slide_idx, slide in enumerate(source_prs.slides):
+            # Extract slide title (first shape with text, typically)
+            slide_title = ""
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text.strip():
+                    slide_title = shape.text.strip()
+                    break
 
-        if insight:
-            # Extract image from source slide
-            source_image = extract_slide_image(source_prs, slide_idx)
+            # Remove emoji characters to match parsed titles
+            import re
+            slide_title_clean = re.sub(r'[\U00010000-\U0010ffff]', '', slide_title).strip()
 
-            # Add insight slide
-            builder.add_insight_slide(
-                slide_number=slide_idx + 1,
-                headline=insight.headline,
-                insights=insight.bullet_points,
-                source_image=source_image
-            )
+            # Find matching insight
+            insight = insights.get(slide_title_clean)
+
+            if insight:
+                # Extract image from source slide
+                source_image = extract_slide_image(source_prs, slide_idx)
+
+                # Add insight slide
+                builder.add_insight_slide(
+                    slide_number=slide_idx + 1,
+                    headline=insight.headline,
+                    insights=insight.bullet_points,
+                    source_image=source_image
+                )
 
     # Save presentation
     builder.save(output_path)
