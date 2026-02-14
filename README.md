@@ -1,26 +1,21 @@
 # Power BI to Executive Deck Converter
 
-## Stop Wrestling with Slides. Start Impressing Executives.
+## Stop wrestling with slides. Get executive-ready presentations in 30 seconds.
 
-You're staring at Power BI dashboards full of data. Your executive presentation is due tomorrow. You know building slides is hard. Extracting meaningful insights? Even harder. Packaging everything into an executive-ready deck? Downright daunting.
+Building slides is time-consuming. Extracting insights from dashboards is hard. Packaging everything for executives takes real effort. This tool handles all three automatically.
 
-**We get it. This tool takes that entire burden away.**
+Transform Power BI dashboards (PDF or PPTX) into professional presentations with analyst-grade insights. No design skills required.
 
-In under 30 seconds, transform raw Power BI dashboards into polished, analyst-grade presentations that make you look like a strategic advisor, not just a data reporter.
+## What You Get
 
-## The Problem This Solves
+**Input:** Raw Power BI dashboard export
+**Output:** Professional 16:9 presentation with:
+- Clean, formatted slides
+- Analyst-grade insights with specific numbers
+- Actionable recommendations
+- Executive-friendly language
 
-❌ **Building slides takes hours** - Layout, formatting, making it look professional
-❌ **Extracting insights is hard** - What story does this data tell? What actions should we take?
-❌ **Executives want answers, not charts** - They need "so what" insights, not raw numbers
-❌ **You're not a presentation designer** - Most people aren't, and that's okay
-
-## What You Get Instead
-
-✅ **Professional 16:9 slides** - No design skills needed, looks like a consultancy delivered it
-✅ **Analyst-grade insights** - Every number tells a story with actionable recommendations
-✅ **30 seconds flat** - Not 3 hours. Not 30 minutes. Literally 30 seconds.
-✅ **Executive-ready language** - Friendly, strategic, opportunity-focused insights that land
+**Time:** ~30 seconds total
 
 ### Example Transformation
 
