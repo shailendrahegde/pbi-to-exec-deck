@@ -232,9 +232,18 @@ Always look for and call out platform, app, or feature variations **IF they appe
 
 Avoid:
 - Critical language: "critical failure", "deployment disaster", "massive gap"
+- Extreme emotional language: "crisis", "catastrophically", "blocking" - use "opportunity", "challenge", "limiting" instead
 - Verbose explanations: Keep insights to 1-2 sentences max
 - Criticizing the analytics: Don't say "missing data" or "blind spot"
 - Technical jargon: Use business language
+
+**Tone guidelines for executives:**
+- ✅ "habit formation opportunity" ❌ "habit formation crisis"
+- ✅ "significant cleanup opportunity" ❌ "massive cleanup required"
+- ✅ "opportunity to unlock features" ❌ "deployment gap blocking features"
+- ✅ "concentration in infrequent tier" ❌ "catastrophically low usage"
+
+**Why:** Extreme language triggers defensive reactions. Data-driven opportunities encourage action.
 
 ### ❌ DON'T: Make Generic Statements
 
