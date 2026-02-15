@@ -24,6 +24,7 @@ class AnalyticsStyleGuide:
     DARK_GRAY = RGBColor(64, 64, 64)
     BEIGE_BG = RGBColor(245, 239, 231)
     WHITE = RGBColor(255, 255, 255)
+    PURPLE_ACCENT = RGBColor(112, 48, 160)  # Purple accent for bottom line
 
     # Typography
     FONT_NAME = "Segoe UI"
@@ -59,6 +60,30 @@ class SlideBuilder:
         self.prs = Presentation()
         self.prs.slide_width = int(self.style.SLIDE_WIDTH)
         self.prs.slide_height = int(self.style.SLIDE_HEIGHT)
+
+    def _add_bottom_accent_line(self, slide):
+        """Add purple accent line at bottom of slide"""
+        # Line positioned at absolute bottom with margin
+        line_height = Pt(3)  # Thin line
+        line_top = self.style.SLIDE_HEIGHT - Inches(0.15)  # 0.15" from bottom
+        line_left = Inches(0)
+        line_width = self.style.SLIDE_WIDTH
+
+        # Add rectangle shape as accent line
+        line_shape = slide.shapes.add_shape(
+            1,  # Rectangle shape type
+            line_left,
+            line_top,
+            line_width,
+            line_height
+        )
+
+        # Style the line
+        line_shape.fill.solid()
+        line_shape.fill.fore_color.rgb = self.style.PURPLE_ACCENT
+        line_shape.line.fill.background()  # No border
+
+        return line_shape
 
     def add_title_slide(self, title: str, subtitle: str = ""):
         """Add title slide with footer disclaimer"""
@@ -109,6 +134,9 @@ class SlideBuilder:
             alignment=PP_ALIGN.CENTER
         )
 
+        # Add purple accent line at bottom
+        self._add_bottom_accent_line(slide)
+
         return slide
 
     def add_section_slide(self, section_title: str):
@@ -133,6 +161,9 @@ class SlideBuilder:
             color=self.style.ACCENT_BLUE,
             alignment=PP_ALIGN.CENTER
         )
+
+        # Add purple accent line at bottom
+        self._add_bottom_accent_line(slide)
 
         return slide
 
@@ -187,6 +218,9 @@ class SlideBuilder:
                 space_after=Pt(18)
             )
 
+        # Add purple accent line at bottom
+        self._add_bottom_accent_line(slide)
+
         return slide
 
     def add_recommendations_slide(self, recommendations: List[str]):
@@ -239,6 +273,9 @@ class SlideBuilder:
                 color=self.style.DARK_GRAY,
                 space_after=Pt(18)
             )
+
+        # Add purple accent line at bottom
+        self._add_bottom_accent_line(slide)
 
         return slide
 
@@ -325,6 +362,9 @@ class SlideBuilder:
                 color=self.style.DARK_GRAY,
                 space_after=Pt(12)
             )
+
+        # Add purple accent line at bottom
+        self._add_bottom_accent_line(slide)
 
         return slide
 
