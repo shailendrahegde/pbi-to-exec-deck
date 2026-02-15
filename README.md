@@ -38,13 +38,19 @@ Both formats work identically.
 
 ### Step 2: Run in terminal
 
+Clone the repo:
 ```bash
-# Clone and open
 git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
 cd pbi-to-exec-deck
-claude
+```
 
-# Convert your dashboard
+**Open in Claude Code (important!):**
+```bash
+claude
+```
+
+Convert your dashboard:
+```
 convert to an executive deck "C:\Users\you\Downloads\dashboard.pdf"
 ```
 
