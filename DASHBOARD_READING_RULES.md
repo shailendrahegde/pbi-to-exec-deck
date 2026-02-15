@@ -156,6 +156,46 @@
 
 ---
 
+### Rule 11: Executive Summary Must Synthesize All Pages
+**Problem:** Summary only reflects first few pages or misses key insights from later pages
+
+**Rule:**
+- Read and analyze ALL dashboard pages before writing summary
+- Identify the 5 most business-critical findings across entire dashboard
+- Prioritize by impact, not by page order
+- Each bullet must include specific numbers from the data
+- Cross-reference: Do these 5 points cover the most important themes?
+
+**Validation:**
+- ✅ Summary references insights from multiple pages (not just page 1-2)
+- ✅ Each bullet has specific number from dashboard
+- ❌ Generic statements without data backing
+
+---
+
+### Rule 12: Recommendations Must Be Actionable and Grounded
+**Problem:** Vague recommendations like "improve training" or "increase adoption" without specifics
+
+**Rule:**
+- Each recommendation must start with action verb (Pilot, Expand, Target, Launch, etc.)
+- Include WHO should do it (which team, department, or user group)
+- Include WHAT specifically (which feature, workflow, or capability)
+- Include expected outcome or success metric
+- Trace recommendation back to specific insight from dashboard
+
+**Examples:**
+- ✅ "Pilot agent training with HR Generalists (140 actions/user) to establish replicable best practices for departments below 50 actions/user baseline"
+- ❌ "Improve agent adoption" (too vague, no specifics)
+- ✅ "Expand PowerPoint Copilot access to Finance team (217 prompts/user pattern) to replicate proven high-engagement workflow"
+- ❌ "Get more users" (no grounding in data)
+
+**Validation:**
+- ✅ Action verb + specific target + expected outcome
+- ✅ Can point to dashboard data supporting this recommendation
+- ❌ Generic advice that could apply to any dashboard
+
+---
+
 ## Pre-Analysis Checklist
 
 Before generating insights for a dashboard page:

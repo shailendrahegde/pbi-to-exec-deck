@@ -136,6 +136,112 @@ class SlideBuilder:
 
         return slide
 
+    def add_executive_summary_slide(self, summary_bullets: List[str]):
+        """Add executive summary slide with 5 key insights"""
+        slide_layout = self.prs.slide_layouts[6]  # Blank layout
+        slide = self.prs.slides.add_slide(slide_layout)
+
+        # Add title
+        title_box = slide.shapes.add_textbox(
+            self.style.MARGIN,
+            self.style.MARGIN,
+            self.style.SLIDE_WIDTH - (2 * self.style.MARGIN),
+            Inches(1)
+        )
+        title_frame = title_box.text_frame
+        title_frame.text = "Executive Summary"
+        self._style_text(
+            title_frame,
+            font_size=Pt(32),
+            bold=True,
+            color=self.style.DARK_BLUE
+        )
+
+        # Add bullets
+        bullets_top = Inches(1.8)
+        bullets_height = self.style.SLIDE_HEIGHT - bullets_top - self.style.MARGIN
+
+        bullets_box = slide.shapes.add_textbox(
+            self.style.MARGIN,
+            bullets_top,
+            self.style.SLIDE_WIDTH - (2 * self.style.MARGIN),
+            bullets_height
+        )
+
+        text_frame = bullets_box.text_frame
+        text_frame.word_wrap = True
+        text_frame.vertical_anchor = MSO_ANCHOR.TOP
+
+        for i, bullet in enumerate(summary_bullets[:5]):  # Max 5 bullets
+            if i > 0:
+                text_frame.add_paragraph()
+
+            p = text_frame.paragraphs[i]
+            p.text = f"• {bullet}"
+            p.level = 0
+
+            self._style_paragraph(
+                p,
+                font_size=Pt(16),
+                color=self.style.DARK_GRAY,
+                space_after=Pt(18)
+            )
+
+        return slide
+
+    def add_recommendations_slide(self, recommendations: List[str]):
+        """Add next steps/recommendations slide with 3-5 actions"""
+        slide_layout = self.prs.slide_layouts[6]  # Blank layout
+        slide = self.prs.slides.add_slide(slide_layout)
+
+        # Add title
+        title_box = slide.shapes.add_textbox(
+            self.style.MARGIN,
+            self.style.MARGIN,
+            self.style.SLIDE_WIDTH - (2 * self.style.MARGIN),
+            Inches(1)
+        )
+        title_frame = title_box.text_frame
+        title_frame.text = "Next Steps & Recommendations"
+        self._style_text(
+            title_frame,
+            font_size=Pt(32),
+            bold=True,
+            color=self.style.ACCENT_BLUE
+        )
+
+        # Add recommendations
+        recs_top = Inches(1.8)
+        recs_height = self.style.SLIDE_HEIGHT - recs_top - self.style.MARGIN
+
+        recs_box = slide.shapes.add_textbox(
+            self.style.MARGIN,
+            recs_top,
+            self.style.SLIDE_WIDTH - (2 * self.style.MARGIN),
+            recs_height
+        )
+
+        text_frame = recs_box.text_frame
+        text_frame.word_wrap = True
+        text_frame.vertical_anchor = MSO_ANCHOR.TOP
+
+        for i, rec in enumerate(recommendations):  # 3-5 recommendations
+            if i > 0:
+                text_frame.add_paragraph()
+
+            p = text_frame.paragraphs[i]
+            p.text = f"{i+1}. {rec}"
+            p.level = 0
+
+            self._style_paragraph(
+                p,
+                font_size=Pt(16),
+                color=self.style.DARK_GRAY,
+                space_after=Pt(18)
+            )
+
+        return slide
+
     def add_insight_slide(
         self,
         slide_number: int,
@@ -405,6 +511,12 @@ def render_presentation(
         "Insights & Recommendations"
     )
 
+    # Add executive summary slide (if provided)
+    if '__executive_summary__' in insights:
+        executive_summary = insights['__executive_summary__']
+        if isinstance(executive_summary, list) and executive_summary:
+            builder.add_executive_summary_slide(executive_summary)
+
     # Add content slides
     slide_mapping = {}  # Track which source slides we've processed
 
@@ -468,6 +580,12 @@ def render_presentation(
                     insights=insight.bullet_points,
                     source_image=source_image
                 )
+
+    # Add recommendations slide (if provided)
+    if '__recommendations__' in insights:
+        recommendations = insights['__recommendations__']
+        if isinstance(recommendations, list) and recommendations:
+            builder.add_recommendations_slide(recommendations)
 
     # Save presentation
     builder.save(output_path)

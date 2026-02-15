@@ -221,6 +221,18 @@ Save results to: temp/claude_insights.json
 
 Format:
 {
+  "executive_summary": [
+    "Finding with specific number → business implication",
+    "Finding with specific number → business implication",
+    "Finding with specific number → business implication",
+    "Finding with specific number → business implication",
+    "Finding with specific number → business implication"
+  ],
+  "recommendations": [
+    "Action: Specific recommendation with expected outcome",
+    "Action: Specific recommendation with expected outcome",
+    "Action: Specific recommendation with expected outcome"
+  ],
   "slides": [
     {
       "title": "slide title",
@@ -260,6 +272,12 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
             bullet_points=slide_insight['insights'],
             source_numbers=slide_insight.get('numbers_used', [])
         )
+
+    # Add executive summary and recommendations as special keys
+    if 'executive_summary' in insights_data:
+        insights['__executive_summary__'] = insights_data['executive_summary']
+    if 'recommendations' in insights_data:
+        insights['__recommendations__'] = insights_data['recommendations']
 
     # Render presentation
     print(f"\nRendering presentation...")

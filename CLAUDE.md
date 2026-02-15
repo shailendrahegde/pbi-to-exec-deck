@@ -82,8 +82,37 @@ Read temp/slide_2.png
 - Provide actionable recommendations
 
 ### 4. Write insights to JSON
+
+**IMPORTANT: After analyzing all slides, also generate:**
+
+**Executive Summary (5 bullets):**
+- Synthesize the most compelling insights across ALL dashboard pages
+- Prioritize by business impact (highest value first)
+- Each bullet must reference specific numbers from the data
+- Answer: "What are the 5 things an executive MUST know?"
+- Format: "[Specific finding] → [Business implication]"
+
+**Next Steps (3-5 recommendations):**
+- Actionable recommendations grounded in the data
+- Prioritize by implementation value and feasibility
+- Each must trace back to specific insights from the dashboard
+- Format: "[Action verb] + [what to do] + [expected outcome]"
+- Be specific: "Pilot agent training with HR Generalists (140 actions/user) to establish best practices" NOT "Improve training"
+
 ```json
 {
+  "executive_summary": [
+    "Finding with specific number → business implication",
+    "Finding with specific number → business implication",
+    "Finding with specific number → business implication",
+    "Finding with specific number → business implication",
+    "Finding with specific number → business implication"
+  ],
+  "recommendations": [
+    "Action: Specific recommendation with expected outcome",
+    "Action: Specific recommendation with expected outcome",
+    "Action: Specific recommendation with expected outcome"
+  ],
   "slides": [
     {
       "slide_number": 1,
@@ -332,6 +361,9 @@ After generating insights, verify:
 ✅ **No criticism** (don't critique the analytics or report)
 ✅ **No forced insights** (if no data, mark "Insufficient data" rather than generating generic content)
 ✅ **Platform patterns identified** (mention specific apps/features ONLY when visible on this page)
+✅ **Executive summary synthesizes ALL pages** (not just first slide)
+✅ **Recommendations are actionable** (specific actions, not vague suggestions)
+✅ **Both sections grounded in data** (can trace each point to dashboard numbers)
 
 ---
 
