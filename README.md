@@ -30,10 +30,13 @@ Transform Power BI dashboards (PDF or PPTX) into professional presentations with
 ## Prerequisites
 
 **Required:**
-- **Python 3.8+** ([Download here](https://www.python.org/downloads/))
 - **Claude Code CLI** ([Installation guide](https://docs.anthropic.com/claude-code))
 
-**That's it!** Claude Code automatically handles dependency installation.
+**Auto-detected and installed by Claude:**
+- **Python 3.8+** - Claude checks if installed, guides installation if needed
+- **Python packages** - Claude automatically installs: `python-pptx`, `Pillow`, `PyMuPDF`, `markitdown`
+
+**That's it!** Claude Code handles all dependency detection and installation automatically.
 
 ---
 
@@ -47,14 +50,19 @@ claude
 ```
 
 ### Step 2: Let Claude handle the rest
-Just ask Claude to convert your dashboard:
+Just ask Claude to convert your dashboard (provide the file path):
 ```
-"Convert my dashboard.pdf to an executive deck"
+"Convert C:\Users\you\Downloads\dashboard.pdf to an executive deck"
+```
+
+Or with relative path:
+```
+"Convert ./my-dashboard.pdf to an executive deck"
 ```
 
 **Claude automatically:**
-- ✓ Detects missing Python dependencies
-- ✓ Installs them (`python-pptx`, `Pillow`, `PyMuPDF`, `markitdown`)
+- ✓ Detects if Python and dependencies are installed
+- ✓ Installs missing packages (`python-pptx`, `Pillow`, `PyMuPDF`, `markitdown`)
 - ✓ Runs the conversion
 - ✓ Creates your executive presentation
 
@@ -105,12 +113,17 @@ cd pbi-to-exec-deck
 claude
 ```
 
-Then in Claude Code, simply say:
+Then in Claude Code, provide the path to your dashboard:
 ```
-"Convert my-dashboard.pdf to an executive deck"
+"Convert C:\Users\you\Downloads\my-dashboard.pdf to an executive deck"
 ```
 
-Or run directly:
+Or with relative path if file is in the project directory:
+```
+"Convert ./my-dashboard.pdf to an executive deck"
+```
+
+Or run the script directly:
 ```bash
 python convert_dashboard_claude.py --source "your-dashboard.pdf"
 ```
