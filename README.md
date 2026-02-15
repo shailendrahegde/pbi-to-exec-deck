@@ -27,6 +27,14 @@ Transform Power BI dashboards (PDF or PPTX) into professional presentations with
 
 ---
 
+## See It in Action
+
+![Workflow Demo](demo.gif)
+
+From Power BI dashboard to executive presentation in 30 seconds.
+
+---
+
 ## How to Use (3 Steps)
 
 ### Step 1: Export your Power BI dashboard
