@@ -1,6 +1,6 @@
 # Power BI to Executive Deck Converter
 
-## Stop wrestling with slides. Get executive-ready presentations in 30 seconds.
+## Stop wrestling with slides. Get executive-ready presentations in 3 minutes.
 
 Building slides is time-consuming. Extracting insights from dashboards is hard. Packaging everything for executives takes real effort. This tool handles all three automatically.
 
@@ -15,7 +15,7 @@ Transform Power BI dashboards (PDF or PPTX) into professional presentations with
 - Actionable recommendations
 - Executive-friendly language
 
-**Time:** ~30 seconds total
+**Time:** ~3 minutes total
 
 ### Example Transformation
 
@@ -31,7 +31,7 @@ Transform Power BI dashboards (PDF or PPTX) into professional presentations with
 
 ![Workflow Demo](demo.gif)
 
-From Power BI dashboard to executive presentation in 30 seconds.
+From Power BI dashboard to executive presentation in 3 minutes.
 
 ---
 
@@ -64,7 +64,7 @@ convert to an executive deck "C:\Users\you\Downloads\dashboard.pdf"
 
 ### Step 3: Done
 
-Open `dashboard_executive.pptx` - your professional presentation is ready in ~30 seconds.
+Open `dashboard_executive.pptx` - your professional presentation is ready in ~3 minutes.
 
 **Claude automatically:**
 - Detects and installs Python/dependencies (if needed)
@@ -84,7 +84,7 @@ Open `dashboard_executive.pptx` - your professional presentation is ready in ~30
 ✅ **16:9 widescreen** - Modern presentation format
 ✅ **Specific numbers** - Every insight backed by data
 ✅ **Friendly tone** - Opportunities, not criticisms
-✅ **Fast** - Complete in under 30 seconds
+✅ **Fast** - Complete in under 3 minutes
 
 ---
 
@@ -126,7 +126,7 @@ MIT - Use freely for your organization
 
 **Run the 3-step process above** on your Power BI dashboard.
 
-**You'll have a professional executive deck in under 30 seconds.**
+**You'll have a professional executive deck in under 3 minutes.**
 
 ---
 
