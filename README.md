@@ -29,87 +29,101 @@ Transform Power BI dashboards (PDF or PPTX) into professional presentations with
 
 ## Prerequisites
 
-Before you begin, ensure you have:
-
 **Required:**
 - **Python 3.8+** ([Download here](https://www.python.org/downloads/))
 - **Claude Code CLI** ([Installation guide](https://docs.anthropic.com/claude-code))
 
-**Check your setup:**
-```bash
-python --version  # Should show Python 3.8 or higher
-claude --version  # Should show Claude Code is installed
-```
+**That's it!** Claude Code automatically handles dependency installation.
 
 ---
 
-## Installation & Setup
+## Installation & Setup (2 Steps)
 
-### Step 1: Clone the repository
+### Step 1: Clone and open in Claude Code
 ```bash
 git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
 cd pbi-to-exec-deck
-```
-
-### Step 2: Install Python dependencies
-```bash
-pip install -r requirements.txt
-```
-
-This installs:
-- `python-pptx` - PowerPoint manipulation
-- `Pillow` - Image processing
-- `PyMuPDF` - PDF extraction
-- `markitdown` - Markdown conversion
-
-### Step 3: Verify setup (optional but recommended)
-```bash
-python check_setup.py
-```
-
-This validates that all dependencies are installed correctly.
-
-### Step 4: Open in Claude Code
-```bash
 claude
 ```
 
-That's it! No API keys, no OCR installation required.
+### Step 2: Let Claude handle the rest
+Just ask Claude to convert your dashboard:
+```
+"Convert my dashboard.pdf to an executive deck"
+```
+
+**Claude automatically:**
+- ✓ Detects missing Python dependencies
+- ✓ Installs them (`python-pptx`, `Pillow`, `PyMuPDF`, `markitdown`)
+- ✓ Runs the conversion
+- ✓ Creates your executive presentation
+
+**No manual pip install needed!** This is the advantage of running through Claude Code.
 
 ---
 
-## Quick Start (3 Steps)
+### Advanced: Running Without Claude Code (Optional)
+
+If you prefer to run the script directly:
+
+```bash
+# Install dependencies manually
+pip install -r requirements.txt
+
+# Verify setup (optional)
+python check_setup.py
+
+# Run conversion
+python convert_dashboard_claude.py --source your-dashboard.pdf
+```
+
+**Note:** Running through Claude Code is recommended for the best experience.
+
+---
+
+## Quick Start
 
 ### 1. Export your Power BI dashboard
 
 **Option A: PDF Export (from Power BI Desktop)**
 - In Power BI Desktop: **File → Export → Export to PDF**
 - Exports all dashboard pages as PDF
-- Save the `.pdf` file to the project directory
+- Save the `.pdf` file
 
 **Option B: PPTX Export (from Power BI Online)**
 - Publish your report from PBI Desktop to Power BI Online (My Workspace)
 - In Power BI Online: **File → Export → PowerPoint (Static Images)**
 - Exports dashboard as PPTX with static images
-- Save the `.pptx` file to the project directory
+- Save the `.pptx` file
 
 **Both formats work identically** - the converter produces the same high-quality executive presentation output
 
-### 2. Run the converter (single command)
+### 2. Open in Claude Code and convert
 
 ```bash
-python convert_dashboard_claude.py --source "your-dashboard.pdf" --auto
+cd pbi-to-exec-deck
+claude
 ```
 
-Works with both `.pdf` and `.pptx` files. Output will be `your-dashboard_executive.pptx` (or use `--output` for a custom name).
+Then in Claude Code, simply say:
+```
+"Convert my-dashboard.pdf to an executive deck"
+```
 
-### 3. Workflow completion
-The script will:
+Or run directly:
+```bash
+python convert_dashboard_claude.py --source "your-dashboard.pdf"
+```
+
+### 3. Get your executive deck
+
+Claude will:
+- ✅ Install any missing dependencies automatically
 - ✅ Extract dashboard images (PDF or PPTX)
-- ✅ Claude automatically analyzes and generates insights
+- ✅ Analyze and generate analyst-grade insights
 - ✅ Build your executive-ready presentation (16:9 PPTX format)
 
-**Done!** Open `your-dashboard_executive.pptx` to see your professional presentation.
+**Done in ~30 seconds!** Open `your-dashboard_executive.pptx` to see your professional presentation.
 
 ---
 
@@ -117,11 +131,11 @@ The script will:
 
 ✅ **Analyst-grade insights** - Not just data restatements
 ✅ **No API key needed** - Uses your Claude Code session
+✅ **Automatic setup** - Claude installs dependencies for you
 ✅ **16:9 widescreen** - Modern presentation format
 ✅ **Specific numbers** - Every insight backed by data
 ✅ **Friendly tone** - Opportunities, not criticisms
 ✅ **Fast** - Complete in under 30 seconds
-✅ **Easy setup** - Simple pip install, no complex configuration
 
 ---
 
