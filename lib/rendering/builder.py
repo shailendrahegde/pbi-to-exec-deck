@@ -63,9 +63,9 @@ class SlideBuilder:
 
     def _add_bottom_accent_line(self, slide):
         """Add purple accent line at bottom of slide"""
-        # Line positioned at absolute bottom with margin
+        # Line positioned at absolute bottom
         line_height = Pt(3)  # Thin line
-        line_top = self.style.SLIDE_HEIGHT - Inches(0.15)  # 0.15" from bottom
+        line_top = self.style.SLIDE_HEIGHT - line_height  # Right at bottom edge
         line_left = Inches(0)
         line_width = self.style.SLIDE_WIDTH
 
