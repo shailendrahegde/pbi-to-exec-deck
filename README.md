@@ -70,25 +70,6 @@ convert to an executive deck "./my-dashboard.pdf"
 
 ---
 
-### Advanced: Running Without Claude Code (Optional)
-
-If you prefer to run the script directly:
-
-```bash
-# Install dependencies manually
-pip install -r requirements.txt
-
-# Verify setup (optional)
-python check_setup.py
-
-# Run conversion
-python convert_dashboard_claude.py --source your-dashboard.pdf
-```
-
-**Note:** Running through Claude Code is recommended for the best experience.
-
----
-
 ## Quick Start
 
 ### 1. Export your Power BI dashboard
