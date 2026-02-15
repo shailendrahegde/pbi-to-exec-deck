@@ -50,14 +50,14 @@ claude
 ```
 
 ### Step 2: Let Claude handle the rest
-Just ask Claude to convert your dashboard (provide the file path):
+Just ask Claude to convert your dashboard:
 ```
-"Convert C:\Users\you\Downloads\dashboard.pdf to an executive deck"
+convert to an executive deck "C:\Users\you\Downloads\dashboard.pdf"
 ```
 
 Or with relative path:
 ```
-"Convert ./my-dashboard.pdf to an executive deck"
+convert to an executive deck "./my-dashboard.pdf"
 ```
 
 **Claude automatically:**
@@ -113,14 +113,14 @@ cd pbi-to-exec-deck
 claude
 ```
 
-Then in Claude Code, provide the path to your dashboard:
+Then in Claude Code, use this command format:
 ```
-"Convert C:\Users\you\Downloads\my-dashboard.pdf to an executive deck"
+convert to an executive deck "C:\Users\you\Downloads\my-dashboard.pdf"
 ```
 
 Or with relative path if file is in the project directory:
 ```
-"Convert ./my-dashboard.pdf to an executive deck"
+convert to an executive deck "./my-dashboard.pdf"
 ```
 
 Or run the script directly:
