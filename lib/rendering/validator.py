@@ -51,6 +51,10 @@ class ConstitutionValidator:
         results = []
 
         for title, insight in insights.items():
+            # Skip special keys used for executive summary and recommendations
+            if title.startswith('__') and title.endswith('__'):
+                continue
+
             # Section 4: Insight-driven headlines
             results.extend(self._validate_headline(title, insight.headline))
 
