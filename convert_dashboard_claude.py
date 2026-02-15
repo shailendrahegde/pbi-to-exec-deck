@@ -15,6 +15,8 @@ Workflow:
 import argparse
 import json
 import sys
+import time
+import os
 from pathlib import Path
 from pptx import Presentation
 from PIL import Image
@@ -365,16 +367,34 @@ Examples:
         # STEP 2: Trigger Claude analysis
         trigger_claude_analysis(request_file)
 
-        # Wait for user confirmation after Claude generates insights
-        # (skip in auto mode for non-interactive environments)
-        if not args.auto:
-            print("\n" + "=" * 70)
-            input("Press ENTER after Claude has generated insights...")
-            print("=" * 70)
+        # Wait for Claude to generate insights
+        # Auto-detect non-interactive environments and poll for insights file
+        print("\n" + "=" * 70)
+        print("Waiting for Claude to complete analysis...")
+        print("=" * 70)
+
+        max_wait = 300  # 5 minutes max
+        wait_interval = 2  # Check every 2 seconds
+        elapsed = 0
+
+        while elapsed < max_wait:
+            if Path(args.insights).exists():
+                try:
+                    # Verify it's valid JSON and has slides
+                    with open(args.insights, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        if 'slides' in data and len(data['slides']) > 0:
+                            print(f"OK Claude analysis complete ({elapsed}s)")
+                            break
+                except (json.JSONDecodeError, KeyError):
+                    pass  # File exists but not ready yet
+
+            time.sleep(wait_interval)
+            elapsed += wait_interval
         else:
-            print("\n" + "=" * 70)
-            print("AUTO MODE: Proceeding without user confirmation...")
-            print("=" * 70)
+            print(f"Warning: Insights file not ready after {max_wait}s, proceeding anyway...")
+
+        print("=" * 70)
 
         # STEP 3: Build final presentation
         print("\n" + "=" * 70)
