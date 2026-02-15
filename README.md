@@ -27,97 +27,38 @@ Transform Power BI dashboards (PDF or PPTX) into professional presentations with
 
 ---
 
-## Prerequisites
+## How to Use (3 Steps)
 
-**Required:**
-- **Claude Code CLI** ([Installation guide](https://docs.anthropic.com/claude-code))
+### Step 1: Export your Power BI dashboard
 
-**Auto-detected and installed by Claude:**
-- **Python 3.8+** - Claude checks if installed, guides installation if needed
-- **Python packages** - Claude automatically installs: `python-pptx`, `Pillow`, `PyMuPDF`, `markitdown`
+**PDF** (from Power BI Desktop): File → Export → Export to PDF
+**PPTX** (from Power BI Online): File → Export → PowerPoint (Static Images)
 
-**That's it!** Claude Code handles all dependency detection and installation automatically.
+Both formats work identically.
 
----
+### Step 2: Run in terminal
 
-## Installation & Setup (2 Steps)
-
-### Step 1: Clone and open in Claude Code
 ```bash
+# Clone and open
 git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
 cd pbi-to-exec-deck
 claude
-```
 
-### Step 2: Let Claude handle the rest
-Just ask Claude to convert your dashboard:
-```
+# Convert your dashboard
 convert to an executive deck "C:\Users\you\Downloads\dashboard.pdf"
 ```
 
-Or with relative path:
-```
-convert to an executive deck "./my-dashboard.pdf"
-```
+### Step 3: Done
+
+Open `dashboard_executive.pptx` - your professional presentation is ready in ~30 seconds.
 
 **Claude automatically:**
-- ✓ Detects if Python and dependencies are installed
-- ✓ Installs missing packages (`python-pptx`, `Pillow`, `PyMuPDF`, `markitdown`)
-- ✓ Runs the conversion
-- ✓ Creates your executive presentation
+- Detects and installs Python/dependencies (if needed)
+- Extracts dashboard images
+- Generates analyst-grade insights
+- Builds your executive deck
 
-**No manual pip install needed!** This is the advantage of running through Claude Code.
-
----
-
-## Quick Start
-
-### 1. Export your Power BI dashboard
-
-**Option A: PDF Export (from Power BI Desktop)**
-- In Power BI Desktop: **File → Export → Export to PDF**
-- Exports all dashboard pages as PDF
-- Save the `.pdf` file
-
-**Option B: PPTX Export (from Power BI Online)**
-- Publish your report from PBI Desktop to Power BI Online (My Workspace)
-- In Power BI Online: **File → Export → PowerPoint (Static Images)**
-- Exports dashboard as PPTX with static images
-- Save the `.pptx` file
-
-**Both formats work identically** - the converter produces the same high-quality executive presentation output
-
-### 2. Open in Claude Code and convert
-
-```bash
-cd pbi-to-exec-deck
-claude
-```
-
-Then in Claude Code, use this command format:
-```
-convert to an executive deck "C:\Users\you\Downloads\my-dashboard.pdf"
-```
-
-Or with relative path if file is in the project directory:
-```
-convert to an executive deck "./my-dashboard.pdf"
-```
-
-Or run the script directly:
-```bash
-python convert_dashboard_claude.py --source "your-dashboard.pdf"
-```
-
-### 3. Get your executive deck
-
-Claude will:
-- ✅ Install any missing dependencies automatically
-- ✅ Extract dashboard images (PDF or PPTX)
-- ✅ Analyze and generate analyst-grade insights
-- ✅ Build your executive-ready presentation (16:9 PPTX format)
-
-**Done in ~30 seconds!** Open `your-dashboard_executive.pptx` to see your professional presentation.
+**Prerequisite:** [Claude Code CLI](https://docs.anthropic.com/claude-code) - everything else is auto-installed.
 
 ---
 
