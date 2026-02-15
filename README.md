@@ -27,6 +27,22 @@ Transform Power BI dashboards (PDF or PPTX) into professional presentations with
 
 ---
 
+## Prerequisites
+
+Before you begin, ensure you have:
+
+**Required:**
+- **Python 3.8+** ([Download here](https://www.python.org/downloads/))
+- **Claude Code CLI** ([Installation guide](https://docs.anthropic.com/claude-code))
+
+**Check your setup:**
+```bash
+python --version  # Should show Python 3.8 or higher
+claude --version  # Should show Claude Code is installed
+```
+
+---
+
 ## Installation & Setup
 
 ### Step 1: Clone the repository
@@ -35,12 +51,30 @@ git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
 cd pbi-to-exec-deck
 ```
 
-### Step 2: Open in Claude Code (IMPORTANT)
+### Step 2: Install Python dependencies
+```bash
+pip install -r requirements.txt
+```
+
+This installs:
+- `python-pptx` - PowerPoint manipulation
+- `Pillow` - Image processing
+- `PyMuPDF` - PDF extraction
+- `markitdown` - Markdown conversion
+
+### Step 3: Verify setup (optional but recommended)
+```bash
+python check_setup.py
+```
+
+This validates that all dependencies are installed correctly.
+
+### Step 4: Open in Claude Code
 ```bash
 claude
 ```
 
-That's it! All dependencies are already included. No API keys, no OCR installation required.
+That's it! No API keys, no OCR installation required.
 
 ---
 
@@ -87,7 +121,7 @@ The script will:
 ✅ **Specific numbers** - Every insight backed by data
 ✅ **Friendly tone** - Opportunities, not criticisms
 ✅ **Fast** - Complete in under 30 seconds
-✅ **No setup required** - All dependencies included
+✅ **Easy setup** - Simple pip install, no complex configuration
 
 ---
 

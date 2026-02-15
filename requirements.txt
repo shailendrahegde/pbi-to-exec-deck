@@ -1,0 +1,13 @@
+# Power BI to Executive Deck Converter - Dependencies
+
+# PowerPoint manipulation
+python-pptx>=0.6.21
+
+# Image processing
+Pillow>=9.0.0
+
+# PDF extraction
+PyMuPDF>=1.23.0
+
+# Markdown conversion
+markitdown>=0.0.1
