@@ -222,11 +222,11 @@ Save results to: temp/claude_insights.json
 Format:
 {
   "executive_summary": [
-    "Finding with specific number → business implication",
-    "Finding with specific number → business implication",
-    "Finding with specific number → business implication",
-    "Finding with specific number → business implication",
-    "Finding with specific number → business implication"
+    "Finding with specific number -> business implication",
+    "Finding with specific number -> business implication",
+    "Finding with specific number -> business implication",
+    "Finding with specific number -> business implication",
+    "Finding with specific number -> business implication"
   ],
   "recommendations": [
     "Action: Specific recommendation with expected outcome",
