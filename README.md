@@ -86,14 +86,6 @@ Open `dashboard_executive.pptx` - your professional presentation is ready in ~3 
 
 ---
 
-## Sample Insights Generated
-
-**Real examples from dashboard conversions:**
-- "Finance achieves 217 prompts per user (5.7x average) - proven pattern to replicate"
-- "HR Generalists (22 users, 140 prompts) have embedded workflows - leverage as champions"
-- "SW Builder leads with 546 actions - successful use case to build on"
-
----
 
 ## How It Works
 
@@ -101,7 +93,7 @@ Open `dashboard_executive.pptx` - your professional presentation is ready in ~3 
 **Step 2 (Intelligent):** Claude analyzes dashboards as senior analyst advisor
 **Step 3 (Deterministic):** Python renders professional slides with insights
 
-**Key insight:** Technical tasks are automated, strategic analysis uses AI.
+**Key differentiator:** Technical tasks are automated, strategic analysis uses AI, predictable output, traceable insights.
 
 ---
 
