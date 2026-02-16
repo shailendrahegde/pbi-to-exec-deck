@@ -652,18 +652,22 @@ def render_presentation(
             if not slide_info:
                 continue
 
-            # Try to find matching insight by title
-            title = slide_info['title']
-            insight = insights.get(title)
+            # Try to find matching insight by slide_number first (preferred)
+            insight = insights.get(slide_num)
 
+            # Fallback to title matching for backward compatibility
             if not insight:
-                # Try without special characters if exact match fails
-                import re
-                title_clean = re.sub(r'[^\w\s]', '', title).strip()
-                for key, val in insights.items():
-                    if isinstance(key, str) and re.sub(r'[^\w\s]', '', key).strip() == title_clean:
-                        insight = val
-                        break
+                title = slide_info['title']
+                insight = insights.get(title)
+
+                if not insight:
+                    # Try without special characters if exact match fails
+                    import re
+                    title_clean = re.sub(r'[^\w\s]', '', title).strip()
+                    for key, val in insights.items():
+                        if isinstance(key, str) and re.sub(r'[^\w\s]', '', key).strip() == title_clean:
+                            insight = val
+                            break
 
             if insight:
                 # Load source image

@@ -217,8 +217,9 @@ For EACH dashboard image above:
 5. Use friendly tone (opportunities, not criticisms)
 6. If insufficient data visible, mark as "Insufficient data"
 
-IMPORTANT: Use the EXACT slide titles listed above in your JSON output.
-Do not infer new titles from the images - use the titles exactly as shown.
+IMPORTANT: Include ALL slides in your output. Use slide_number to ensure
+complete coverage. You can create insight-led titles that are better than
+the source titles - just make sure every slide has an entry.
 
 Follow Claude PowerPoint Constitution Section 5A guidelines.
 
@@ -240,7 +241,8 @@ Format:
   ],
   "slides": [
     {
-      "title": "EXACT title from list above",
+      "slide_number": 1,
+      "title": "Insight-led title (can differ from source)",
       "headline": "[Number] + [Insight]",
       "insights": ["insight 1", "insight 2", "insight 3"],
       "numbers_used": ["123", "45%"]
@@ -269,14 +271,26 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
     from lib.analysis.insights import Insight
 
     # Convert Claude's insights to expected format
+    # Key by slide_number (not title) to ensure all slides are included
     insights = {}
     for slide_insight in insights_data.get('slides', []):
-        title = slide_insight['title']
-        insights[title] = Insight(
-            headline=slide_insight['headline'],
-            bullet_points=slide_insight['insights'],
-            source_numbers=slide_insight.get('numbers_used', [])
-        )
+        slide_num = slide_insight.get('slide_number')
+        if slide_num:
+            # Use slide_number as key for guaranteed matching
+            insights[slide_num] = Insight(
+                headline=slide_insight['headline'],
+                bullet_points=slide_insight['insights'],
+                source_numbers=slide_insight.get('numbers_used', [])
+            )
+        else:
+            # Fallback to title-based for backward compatibility
+            title = slide_insight.get('title', '')
+            if title:
+                insights[title] = Insight(
+                    headline=slide_insight['headline'],
+                    bullet_points=slide_insight['insights'],
+                    source_numbers=slide_insight.get('numbers_used', [])
+                )
 
     # Add executive summary and recommendations as special keys
     if 'executive_summary' in insights_data:
