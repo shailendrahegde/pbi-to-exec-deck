@@ -52,7 +52,12 @@ class ConstitutionValidator:
 
         for title, insight in insights.items():
             # Skip special keys used for executive summary and recommendations
-            if title.startswith('__') and title.endswith('__'):
+            # Handle both string keys and integer keys (slide numbers)
+            if isinstance(title, str) and title.startswith('__') and title.endswith('__'):
+                continue
+
+            # Skip integer keys (slide numbers - used for matching, not validation)
+            if isinstance(title, int):
                 continue
 
             # Section 4: Insight-driven headlines
