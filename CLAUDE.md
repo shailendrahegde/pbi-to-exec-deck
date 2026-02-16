@@ -289,9 +289,19 @@ If a dashboard page has no numbers or is blank:
 
 Follow this proven formula for each slide:
 
-**Headline:** `[Specific Number] + [Key Insight/Opportunity]`
+**Headline:** `[Clear Takeaway Message]` - Focus on instant clarity without requiring numbers
 
-Example: "134 Agent users from 1,275 total (11%) - significant opportunity to expand automation adoption"
+**IMPORTANT:** Headlines should answer "so what?" and be memorable. Numbers are NOT required in headlines - they belong in the supporting insights where they provide evidence.
+
+Good headline examples:
+- ✅ "Multi-platform adoption demonstrates organization-wide AI readiness"
+- ✅ "Visual Creator emerges as winning agent template for scaling"
+- ✅ "Habit formation gap prevents agents from becoming daily workflows"
+- ✅ "Operations establishes benchmark for M365 Copilot excellence"
+
+Bad headline examples:
+- ❌ "4,381 total active users across Agent (180), Unlicensed Chat (2,585)..." (too many numbers, unclear takeaway)
+- ❌ "101 of 116 total agent users stay in infrequent tier with zero daily users" (data dump, not insight)
 
 **Insight 1 (Scale/Scope):**
 Specific observation with number + what it means
@@ -307,6 +317,8 @@ Example: "Client Finance's 217 prompts/user pattern ready to replicate across Co
 Specific recommendation + expected outcome
 
 Example: "Pilot training program with top 3 departments to reach 50+ prompts/user baseline"
+
+**Remember:** The headline is what an executive will remember 3 days later. Make it clear, memorable, and clearly supported by the numbered evidence in your insights.
 
 ---
 
