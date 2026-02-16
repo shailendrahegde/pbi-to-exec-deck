@@ -1,6 +1,6 @@
 # Power BI to Executive Deck Converter
 
-## Stop wrestling with slides. Get executive-ready presentations in 3 minutes.
+## From raw numbers to executive-ready, insight-driven presentations — in about 3 minutes.
 
 Building slides is time-consuming. Extracting insights from dashboards is hard. Packaging everything for executives takes real effort. This tool handles all three automatically.
 
@@ -8,19 +8,17 @@ Transform Power BI dashboards (PDF or PPTX) into professional presentations with
 
 ## What You Get
 
-**Input:** Raw Power BI dashboard export
+**Input:** Raw dashboard export in PDF or PPTX 
 **Output:** Professional 16:9 presentation with:
 - Clean, formatted slides
 - Analyst-grade insights with specific numbers
 - Actionable recommendations
 - Executive-friendly language
 
-**Time:** ~3 minutes total
-
 ### Example Transformation
 
-**Generic Statement:**
-> "There are 1,275 active Copilot users"
+**Raw numbers on a report:**
+> "1,275 active Copilot users", "134 Agent users"
 
 **Analyst-Grade Insight:**
 > "134 Agent users from 1,275 total (11%) - significant opportunity to expand automation adoption. HR Generalists (140 actions/user) are 3-4x above average - great candidates to champion agent adoption"
