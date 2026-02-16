@@ -300,7 +300,7 @@ class SlideBuilder:
 
         # Calculate layout positions
         image_left = self.style.MARGIN
-        image_top = Inches(1.5)
+        image_top = Inches(1.8)  # Moved down from 1.5 for better spacing
 
         text_left = image_left + self.style.IMAGE_MAX_WIDTH + self.style.SPACING
         text_width = self.style.SLIDE_WIDTH - text_left - self.style.MARGIN
@@ -353,14 +353,15 @@ class SlideBuilder:
                 text_frame.add_paragraph()
 
             p = text_frame.paragraphs[i]
-            p.text = f"• {insight}"
             p.level = 0
+            p.space_after = Pt(12)
 
-            self._style_paragraph(
+            # Add insight with selective bold formatting
+            self._add_insight_with_selective_bold(
                 p,
-                font_size=self.style.INSIGHT_SIZE,
-                color=self.style.DARK_GRAY,
-                space_after=Pt(12)
+                insight,
+                self.style.INSIGHT_SIZE,
+                self.style.DARK_GRAY
             )
 
         # Add purple accent line at bottom
@@ -406,12 +407,47 @@ class SlideBuilder:
         # Add image
         pic = slide.shapes.add_picture(img_stream, left, top, width, height)
 
-        # Add border (blue line)
+        # Add border (blue line) - lighter weight
         line = pic.line
         line.color.rgb = self.style.ACCENT_BLUE
-        line.width = Pt(2)
+        line.width = Pt(1)
 
         return pic
+
+    def _add_insight_with_selective_bold(self, paragraph, insight_text, font_size, color):
+        """Add insight text with selective bolding for emphasis"""
+        import re
+
+        # Clear existing text
+        paragraph.text = ""
+
+        # Add bullet
+        bullet_run = paragraph.add_run()
+        bullet_run.text = "• "
+        bullet_run.font.name = self.style.FONT_NAME
+        bullet_run.font.size = font_size
+        bullet_run.font.color.rgb = color
+
+        # Pattern to identify numbers, percentages, and key metrics
+        # Matches: numbers with commas, decimals, K/M suffixes, percentages, ranges
+        bold_pattern = r'(\d+(?:,\d{3})*(?:\.\d+)?[KMB%]?(?:-\d+(?:,\d{3})*(?:\.\d+)?[KMB%]?)?(?:\s*(?:users?|actions?|prompts?|days?|months?|%|x|times?))?)'
+
+        # Split text by bold patterns
+        parts = re.split(f'({bold_pattern})', insight_text)
+
+        for part in parts:
+            if not part:
+                continue
+
+            run = paragraph.add_run()
+            run.text = part
+            run.font.name = self.style.FONT_NAME
+            run.font.size = font_size
+            run.font.color.rgb = color
+
+            # Bold if it matches the pattern (numbers and metrics)
+            if re.match(bold_pattern, part):
+                run.font.bold = True
 
     def _style_text(
         self,
