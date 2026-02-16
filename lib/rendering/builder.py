@@ -417,7 +417,7 @@ class SlideBuilder:
         return pic
 
     def _add_insight_with_selective_bold(self, paragraph, insight_text, font_size, color, prefix="• "):
-        """Add insight text with selective bolding for emphasis"""
+        """Add insight text with selective bolding for emphasis (supports markdown **bold**)"""
         import re
 
         # Clear existing text
@@ -430,58 +430,43 @@ class SlideBuilder:
         prefix_run.font.size = font_size
         prefix_run.font.color.rgb = color
 
-        # Patterns to identify what to bold (numbers with context, key phrases)
-        # Match numbers with units: "325 users", "25.44 actions/user", "3-4x", "26%"
-        patterns_to_bold = [
-            r'\d+(?:,\d{3})*(?:\.\d+)?\s*(?:users?|actions?|prompts?|days?|months?)',  # "180 users"
-            r'\d+(?:,\d{3})*(?:\.\d+)?\s*(?:actions?|prompts?)/user',  # "25.44 actions/user"
-            r'\d+(?:\.\d+)?[KMB]',  # "203K", "1.5M"
-            r'\d+(?:\.\d+)?%',  # "26%", "3.5%"
-            r'\d+-\d+x',  # "3-4x"
-            r'\d+(?:,\d{3})*',  # Plain numbers like "1,616" or "180"
-        ]
+        # Check for markdown bold syntax (**text**)
+        markdown_bold_pattern = r'\*\*(.+?)\*\*'
+        markdown_matches = list(re.finditer(markdown_bold_pattern, insight_text))
 
-        # Find all matches and their positions
-        matches = []
-        for pattern in patterns_to_bold:
-            for match in re.finditer(pattern, insight_text):
-                matches.append((match.start(), match.end()))
+        if markdown_matches:
+            # Use markdown bold sections
+            pos = 0
+            for match in markdown_matches:
+                # Add normal text before bold section
+                if pos < match.start():
+                    run = paragraph.add_run()
+                    run.text = insight_text[pos:match.start()]
+                    run.font.name = self.style.FONT_NAME
+                    run.font.size = font_size
+                    run.font.color.rgb = color
 
-        # Sort by position and merge overlapping ranges
-        matches.sort()
-        merged = []
-        for start, end in matches:
-            if merged and start <= merged[-1][1]:
-                # Overlapping or adjacent - extend the previous range
-                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
-            else:
-                merged.append((start, end))
-
-        # Build text with selective bold
-        pos = 0
-        for start, end in merged:
-            # Add normal text before bold section
-            if pos < start:
+                # Add bold section (without ** markers)
                 run = paragraph.add_run()
-                run.text = insight_text[pos:start]
+                run.text = match.group(1)  # Extract text without **
                 run.font.name = self.style.FONT_NAME
                 run.font.size = font_size
                 run.font.color.rgb = color
+                run.font.bold = True
 
-            # Add bold section
+                pos = match.end()
+
+            # Add remaining text
+            if pos < len(insight_text):
+                run = paragraph.add_run()
+                run.text = insight_text[pos:]
+                run.font.name = self.style.FONT_NAME
+                run.font.size = font_size
+                run.font.color.rgb = color
+        else:
+            # No markdown - just add plain text without any bolding
             run = paragraph.add_run()
-            run.text = insight_text[start:end]
-            run.font.name = self.style.FONT_NAME
-            run.font.size = font_size
-            run.font.color.rgb = color
-            run.font.bold = True
-
-            pos = end
-
-        # Add remaining text
-        if pos < len(insight_text):
-            run = paragraph.add_run()
-            run.text = insight_text[pos:]
+            run.text = insight_text
             run.font.name = self.style.FONT_NAME
             run.font.size = font_size
             run.font.color.rgb = color
