@@ -356,15 +356,14 @@ class SlideBuilder:
                 text_frame.add_paragraph()
 
             p = text_frame.paragraphs[i]
+            p.text = f"• {insight}"
             p.level = 0
-            p.space_after = Pt(12)
 
-            # Add insight with selective bold formatting
-            self._add_insight_with_selective_bold(
+            self._style_paragraph(
                 p,
-                insight,
-                self.style.INSIGHT_SIZE,
-                self.style.DARK_GRAY
+                font_size=self.style.INSIGHT_SIZE,
+                color=self.style.DARK_GRAY,
+                space_after=Pt(12)
             )
 
         # Add purple accent line at bottom
