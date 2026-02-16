@@ -1,4 +1,4 @@
-# Power BI to Executive Deck Converter
+# “Dashboards → Decks”
 
 ## From raw numbers to executive-ready, insight-driven presentations — in about 3 minutes.
 
