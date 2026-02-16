@@ -635,34 +635,55 @@ def render_presentation(
     # For PPTX sources, iterate through source slides as before
     if source_images_map is not None:
         # PDF workflow: Use temp/ images and insights mapping
-        for title, insight in insights.items():
-            # Find slide number from analysis request
-            # We'll iterate through the map to find the matching title
-            source_image = None
-            slide_num = None
+        # Load analysis request once (not in loop)
+        import json
+        slide_info_map = {}
+        try:
+            with open('temp/analysis_request.json', 'r', encoding='utf-8') as f:
+                request = json.load(f)
+                for slide_info in request.get('slides', []):
+                    slide_info_map[slide_info['slide_number']] = slide_info
+        except Exception as e:
+            print(f"  WARNING: Could not load analysis request: {e}")
 
-            # Load analysis request to get slide numbers
-            import json
-            try:
-                with open('temp/analysis_request.json', 'r', encoding='utf-8') as f:
-                    request = json.load(f)
-                    for slide_info in request.get('slides', []):
-                        if slide_info['title'] == title:
-                            slide_num = slide_info['slide_number']
-                            image_path = source_images_map.get(slide_num)
-                            if image_path and Path(image_path).exists():
-                                source_image = Image.open(image_path)
-                            break
-            except Exception:
-                pass
+        # Process insights - iterate by slide number for guaranteed order
+        for slide_num in sorted(source_images_map.keys()):
+            slide_info = slide_info_map.get(slide_num)
+            if not slide_info:
+                continue
 
-            if source_image and slide_num:
+            # Try to find matching insight by title
+            title = slide_info['title']
+            insight = insights.get(title)
+
+            if not insight:
+                # Try without special characters if exact match fails
+                import re
+                title_clean = re.sub(r'[^\w\s]', '', title).strip()
+                for key, val in insights.items():
+                    if isinstance(key, str) and re.sub(r'[^\w\s]', '', key).strip() == title_clean:
+                        insight = val
+                        break
+
+            if insight:
+                # Load source image
+                source_image = None
+                image_path = source_images_map.get(slide_num)
+                if image_path and Path(image_path).exists():
+                    try:
+                        source_image = Image.open(image_path)
+                    except Exception as e:
+                        print(f"  WARNING: Could not load image for slide {slide_num}: {e}")
+
+                # Add slide even if image is missing (better than skipping entirely)
                 builder.add_insight_slide(
                     slide_number=slide_num,
                     headline=insight.headline,
                     insights=insight.bullet_points,
                     source_image=source_image
                 )
+            else:
+                print(f"  WARNING: No insight found for slide {slide_num}: {title}")
     else:
         # PPTX workflow: Original logic
         for slide_idx, slide in enumerate(source_prs.slides):
