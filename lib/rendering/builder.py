@@ -208,14 +208,15 @@ class SlideBuilder:
                 text_frame.add_paragraph()
 
             p = text_frame.paragraphs[i]
-            p.text = f"• {bullet}"
             p.level = 0
+            p.space_after = Pt(18)
 
-            self._style_paragraph(
+            # Add bullet with selective bold formatting
+            self._add_insight_with_selective_bold(
                 p,
-                font_size=Pt(16),
-                color=self.style.DARK_GRAY,
-                space_after=Pt(18)
+                bullet,
+                Pt(16),
+                self.style.DARK_GRAY
             )
 
         # Add purple accent line at bottom
@@ -264,14 +265,16 @@ class SlideBuilder:
                 text_frame.add_paragraph()
 
             p = text_frame.paragraphs[i]
-            p.text = f"{i+1}. {rec}"
             p.level = 0
+            p.space_after = Pt(18)
 
-            self._style_paragraph(
+            # Add recommendation with selective bold formatting
+            self._add_insight_with_selective_bold(
                 p,
-                font_size=Pt(16),
-                color=self.style.DARK_GRAY,
-                space_after=Pt(18)
+                rec,
+                Pt(16),
+                self.style.DARK_GRAY,
+                prefix=f"{i+1}. "
             )
 
         # Add purple accent line at bottom
@@ -414,19 +417,19 @@ class SlideBuilder:
 
         return pic
 
-    def _add_insight_with_selective_bold(self, paragraph, insight_text, font_size, color):
+    def _add_insight_with_selective_bold(self, paragraph, insight_text, font_size, color, prefix="• "):
         """Add insight text with selective bolding for emphasis"""
         import re
 
         # Clear existing text
         paragraph.text = ""
 
-        # Add bullet
-        bullet_run = paragraph.add_run()
-        bullet_run.text = "• "
-        bullet_run.font.name = self.style.FONT_NAME
-        bullet_run.font.size = font_size
-        bullet_run.font.color.rgb = color
+        # Add prefix (bullet or number)
+        prefix_run = paragraph.add_run()
+        prefix_run.text = prefix
+        prefix_run.font.name = self.style.FONT_NAME
+        prefix_run.font.size = font_size
+        prefix_run.font.color.rgb = color
 
         # Patterns to identify what to bold (numbers with context, key phrases)
         # Match numbers with units: "325 users", "25.44 actions/user", "3-4x", "26%"
