@@ -217,6 +217,9 @@ For EACH dashboard image above:
 5. Use friendly tone (opportunities, not criticisms)
 6. If insufficient data visible, mark as "Insufficient data"
 
+IMPORTANT: Use the EXACT slide titles listed above in your JSON output.
+Do not infer new titles from the images - use the titles exactly as shown.
+
 Follow Claude PowerPoint Constitution Section 5A guidelines.
 
 Save results to: temp/claude_insights.json
@@ -237,7 +240,7 @@ Format:
   ],
   "slides": [
     {
-      "title": "slide title",
+      "title": "EXACT title from list above",
       "headline": "[Number] + [Insight]",
       "insights": ["insight 1", "insight 2", "insight 3"],
       "numbers_used": ["123", "45%"]
