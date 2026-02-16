@@ -20,7 +20,7 @@ Transform Power BI dashboards (PDF or PPTX) into professional presentations with
 **Raw numbers on a report:**
 > "1,275 active Copilot users", "134 Agent users"
 
-**Analyst-Grade Insight:**
+**Connected together and turned into analyst-grade insight:**
 > "134 Agent users from 1,275 total (11%) - significant opportunity to expand automation adoption. HR Generalists (140 actions/user) are 3-4x above average - great candidates to champion agent adoption"
 
 ---
