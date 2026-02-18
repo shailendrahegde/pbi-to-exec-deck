@@ -642,7 +642,7 @@ def render_presentation(
 
     # Add title slide
     builder.add_title_slide(
-        "Executive Analytics Dashboard",
+        "Executive Insights",
         "Insights & Recommendations"
     )
 
