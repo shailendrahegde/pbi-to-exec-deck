@@ -726,8 +726,9 @@ def render_presentation(
             import re
             slide_title_clean = re.sub(r'[\U00010000-\U0010ffff]', '', slide_title).strip()
 
-            # Find matching insight
-            insight = insights.get(slide_title_clean)
+            # Find matching insight — try slide_number key first (integer),
+            # then fall back to title string for backward compatibility
+            insight = insights.get(slide_idx + 1) or insights.get(slide_title_clean)
 
             if insight:
                 # Extract image from source slide and normalize orientation
