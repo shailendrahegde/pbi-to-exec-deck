@@ -15,6 +15,39 @@ from PIL import Image
 import io
 
 
+def _normalize_image_orientation(image: Image.Image) -> Image.Image:
+    """
+    Normalize image orientation before inserting into a slide.
+
+    Handles two common sources of rotated/tilted dashboard images:
+      1. EXIF orientation metadata (applied transparently via exif_transpose).
+      2. 90-degree tilt artifacts from PDF export pipelines — a landscape
+         Power BI dashboard can arrive as a portrait image when the exporting
+         tool bakes a 90° clockwise rotation into the page stream.  We detect
+         this by checking whether the image is taller than it is wide and
+         rotate it 90° clockwise (rotate(-90) in PIL) to restore landscape orientation.
+
+    Text readability (left-to-right) is preserved because Power BI dashboards
+    are always 16:9 landscape; portrait dimensions unambiguously mean rotation.
+    """
+    from PIL import ImageOps
+
+    # Step 1: honour EXIF rotation tag (safe no-op if tag is absent)
+    try:
+        image = ImageOps.exif_transpose(image)
+    except Exception:
+        pass
+
+    # Step 2: correct 90-degree tilt — portrait image from a landscape source.
+    # Power BI embeds landscape dashboards in portrait PDF pages using a CCW
+    # rotation; the inverse (90° CW) restores the correct landscape orientation.
+    width, height = image.size
+    if height > width:
+        image = image.rotate(-90, expand=True)
+
+    return image
+
+
 class AnalyticsStyleGuide:
     """Color palette and typography from Analytics template"""
 
@@ -381,6 +414,10 @@ class SlideBuilder:
         max_height: float
     ):
         """Add image with white background and blue border"""
+        # Normalize orientation before placement: correct EXIF rotation and any
+        # 90-degree tilt artifacts introduced by PDF/image export pipelines.
+        image = _normalize_image_orientation(image)
+
         # Calculate scaled dimensions maintaining aspect ratio
         img_width, img_height = image.size
         aspect_ratio = img_width / img_height
@@ -662,7 +699,7 @@ def render_presentation(
                 image_path = source_images_map.get(slide_num)
                 if image_path and Path(image_path).exists():
                     try:
-                        source_image = Image.open(image_path)
+                        source_image = _normalize_image_orientation(Image.open(image_path))
                     except Exception as e:
                         print(f"  WARNING: Could not load image for slide {slide_num}: {e}")
 
@@ -693,8 +730,10 @@ def render_presentation(
             insight = insights.get(slide_title_clean)
 
             if insight:
-                # Extract image from source slide
+                # Extract image from source slide and normalize orientation
                 source_image = extract_slide_image(source_prs, slide_idx)
+                if source_image:
+                    source_image = _normalize_image_orientation(source_image)
 
                 # Add insight slide
                 builder.add_insight_slide(

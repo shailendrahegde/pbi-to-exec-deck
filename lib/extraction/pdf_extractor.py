@@ -14,6 +14,40 @@ import fitz  # PyMuPDF
 from PIL import Image
 
 
+def _correct_image_orientation(img: Image.Image) -> Image.Image:
+    """
+    Auto-correct image orientation for dashboard exports.
+
+    Dashboard images (e.g., Power BI exports) are always landscape (16:9).
+    Two common export artifacts are handled:
+      1. EXIF rotation metadata embedded in the image file.
+      2. 90-degree page rotation baked into the PDF stream — the rendered
+         pixmap comes out portrait even though the content is landscape.
+
+    In case (2) we rotate 90° clockwise (rotate(-90) in PIL), which is the
+    standard correction for a landscape source that was embedded in portrait
+    via a CCW rotation during PDF export.
+    """
+    from PIL import ImageOps
+
+    # Apply EXIF orientation metadata first (safe no-op if no EXIF present)
+    try:
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        pass
+
+    width, height = img.size
+
+    # If the image is taller than it is wide it is portrait — almost certainly
+    # a 90-degree tilt artifact.  Rotate 90° CW (= rotate(-90)) to restore
+    # landscape orientation.  Power BI embeds landscape content in portrait
+    # PDF pages using a CCW rotation, so the inverse (CW) corrects it.
+    if height > width:
+        img = img.rotate(-90, expand=True)
+
+    return img
+
+
 def extract_pdf_page_as_image(pdf_document: fitz.Document, page_idx: int, output_path: str) -> bool:
     """
     Extract PDF page as PNG image (mirrors extract_slide_as_image for PPTX).
@@ -43,6 +77,10 @@ def extract_pdf_page_as_image(pdf_document: fitz.Document, page_idx: int, output
         # Convert to PIL Image
         img_data = pix.tobytes("png")
         img = Image.open(io.BytesIO(img_data))
+
+        # Auto-correct orientation: handles EXIF metadata and 90° tilt
+        # artifacts that can occur when exporting dashboards to PDF.
+        img = _correct_image_orientation(img)
 
         # Save as PNG
         img.save(output_path)

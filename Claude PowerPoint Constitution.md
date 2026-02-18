@@ -261,7 +261,13 @@ Insight: "Usage patterns indicate opportunities exist across the organization"
 4. Images MUST support comprehension, not decoration.
 5. Image positioning MUST allow adequate white space around the image for visual breathing room.
 6. All images must be properly contained within the slide margins with no overflow or clipping.
-7. When including images alongside narrative text, place image to the left, and the narrative to the right. 
+7. When including images alongside narrative text, place image to the left, and the narrative to the right.
+8. **Image Orientation — AUTO-CORRECTED (Mandatory):**
+   - All source images MUST be presented in landscape orientation (width > height) inside the slide.
+   - **EXIF rotation metadata** embedded in image files MUST be applied before any placement or dimension calculations.
+   - If a source image is portrait (height > width) after EXIF correction, it MUST be rotated 90° clockwise to restore landscape orientation.  Power BI embeds landscape dashboards in portrait PDF pages using a CCW rotation; the clockwise correction reverses this artifact.
+   - Text inside images MUST read left-to-right.  A correctly oriented landscape image from a Power BI dashboard will always have left-to-right text; portrait dimensions are a reliable signal of an incorrect rotation.
+   - Claude MUST NOT paste a portrait-oriented dashboard image into a slide without first correcting its orientation.
 
 ---
 
