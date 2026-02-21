@@ -119,9 +119,9 @@ Read temp/slide_2.png
       "title": "Slide Title",
       "headline": "[Number] + [Insight]",
       "insights": [
-        "[Specific observation with business implication]",
-        "[Gap or opportunity identified]",
-        "[Actionable recommendation]"
+        "Punchy bold line under 8 words || Supporting evidence with specific data and business implication",
+        "Punchy bold line under 8 words || Pattern or opportunity identified with data",
+        "Punchy bold line under 8 words || Actionable recommendation with expected outcome"
       ],
       "numbers_used": ["134", "1,275", "11%"]
     }
@@ -303,20 +303,24 @@ Bad headline examples:
 - ❌ "4,381 total active users across Agent (180), Unlicensed Chat (2,585)..." (too many numbers, unclear takeaway)
 - ❌ "101 of 116 total agent users stay in infrequent tier with zero daily users" (data dump, not insight)
 
-**Insight 1 (Scale/Scope):**
-Specific observation with number + what it means
+**Insight format: two-part, separated by `||`**
 
-Example: "HR Generalists (140 actions/user) are 3-4x above average - great candidates to champion agent adoption"
+Each insight must follow this exact structure:
+`"[Bold punchy line, 6-8 words max] || [Supporting evidence with specific data]"`
+
+The bold line is rendered large and bold on the slide. The detail is rendered below in normal weight. Keep them clearly separated — the bold line is the "so what", the detail is the proof.
+
+**Insight 1 (Scale/Scope):**
+
+Example: `"HR Generalists lead usage by far || 140 actions/user is 3-4x the average — strong candidates to champion adoption"`
 
 **Insight 2 (Pattern/Opportunity):**
-Trend or pattern identified + business implication
 
-Example: "Client Finance's 217 prompts/user pattern ready to replicate across Corporate Finance"
+Example: `"Client Finance pattern ready to replicate || 217 prompts/user sets the benchmark for Corporate Finance expansion"`
 
 **Insight 3 (Action):**
-Specific recommendation + expected outcome
 
-Example: "Pilot training program with top 3 departments to reach 50+ prompts/user baseline"
+Example: `"Pilot training with top 3 departments || Target 50+ prompts/user baseline to establish org-wide standard"`
 
 **Remember:** The headline is what an executive will remember 3 days later. Make it clear, memorable, and clearly supported by the numbered evidence in your insights.
 

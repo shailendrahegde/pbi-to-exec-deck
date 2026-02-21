@@ -384,20 +384,40 @@ class SlideBuilder:
         text_frame.word_wrap = True
         text_frame.vertical_anchor = MSO_ANCHOR.TOP
 
+        first_para = True
         for i, insight in enumerate(insights[:3]):  # Max 3 insights
-            if i > 0:
-                text_frame.add_paragraph()
+            # Split into bold punchy line and supporting detail using || separator
+            parts = [s.strip() for s in insight.split('||', 1)]
+            bold_line = parts[0]
+            detail = parts[1] if len(parts) > 1 else ""
 
-            p = text_frame.paragraphs[i]
-            p.text = f"• {insight}"
-            p.level = 0
+            # Bold punchy line (6-8 words)
+            if first_para:
+                p = text_frame.paragraphs[0]
+                first_para = False
+            else:
+                p = text_frame.add_paragraph()
+                p.space_before = Pt(12)
 
+            p.text = f"• {bold_line}"
             self._style_paragraph(
                 p,
                 font_size=self.style.INSIGHT_SIZE,
-                color=self.style.DARK_GRAY,
-                space_after=Pt(12)
+                bold=True,
+                color=self.style.DARK_BLUE,
+                space_after=Pt(3)
             )
+
+            # Supporting evidence with data (normal weight, below bold line)
+            if detail:
+                p2 = text_frame.add_paragraph()
+                p2.text = detail
+                self._style_paragraph(
+                    p2,
+                    font_size=Pt(13),
+                    color=self.style.DARK_GRAY,
+                    space_after=Pt(2)
+                )
 
         # Add purple accent line at bottom
         self._add_bottom_accent_line(slide)
