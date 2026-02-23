@@ -660,11 +660,10 @@ def render_presentation(
     # Create builder
     builder = SlideBuilder(source_prs)
 
-    # Add title slide
-    builder.add_title_slide(
-        "Executive Insights",
-        "Insights & Recommendations"
-    )
+    # Add title slide (use deck_title from insights if provided)
+    deck_title = insights.get('__deck_title__', 'Executive Insights')
+    deck_subtitle = insights.get('__deck_subtitle__', 'Insights & Recommendations')
+    builder.add_title_slide(deck_title, deck_subtitle)
 
     # Add executive summary slide (if provided)
     if '__executive_summary__' in insights:

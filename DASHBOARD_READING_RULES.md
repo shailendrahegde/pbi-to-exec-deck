@@ -196,6 +196,24 @@
 
 ---
 
+### Rule 13: Handle Strip Edges — Never Invent Missing Chart Data
+
+**Context:** Portrait PDF pages are split into horizontal strips at whitespace gaps between sections. The splitter snaps to background-coloured rows, so charts should not be bisected. However, if a chart title appears at the very bottom of a strip without its chart body (or a chart body appears at the top of the next strip without its title), treat those two strips as a pair for that chart.
+
+**Rule:**
+- If content is visually truncated at the top or bottom edge of a strip, acknowledge that you are seeing a partial section and note "continues from previous strip" or "continues on next strip"
+- Do NOT invent numbers for the unseen portion
+- Do NOT analyse a chart whose axis labels, bars, or legend are cut off — mark it as partial and skip numeric claims for that chart
+- When both strips of a pair are available (they always are in this report), cross-reference them before citing numbers from any chart that spans the boundary
+
+**Validation:**
+- ✅ "Chart is partially visible at strip edge — citing only fully visible data points"
+- ✅ "Legend for this chart appears on the next strip — cross-referenced before citing numbers"
+- ❌ Guessing or extrapolating values from a cropped chart axis
+- ❌ Describing a chart as complete when its labels/legend are cut off
+
+---
+
 ## Pre-Analysis Checklist
 
 Before generating insights for a dashboard page:

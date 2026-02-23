@@ -292,11 +292,15 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
                     source_numbers=slide_insight.get('numbers_used', [])
                 )
 
-    # Add executive summary and recommendations as special keys
+    # Add executive summary, recommendations, and deck title as special keys
     if 'executive_summary' in insights_data:
         insights['__executive_summary__'] = insights_data['executive_summary']
     if 'recommendations' in insights_data:
         insights['__recommendations__'] = insights_data['recommendations']
+    if 'deck_title' in insights_data:
+        insights['__deck_title__'] = insights_data['deck_title']
+    if 'deck_subtitle' in insights_data:
+        insights['__deck_subtitle__'] = insights_data['deck_subtitle']
 
     # Render presentation
     print(f"\nRendering presentation...")
