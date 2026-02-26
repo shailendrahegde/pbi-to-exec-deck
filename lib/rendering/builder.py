@@ -10,9 +10,25 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
-from lib.analysis.insights import Insight
+from lib.analysis.insights import Insight, BulletPoint
 from PIL import Image
 import io
+
+try:
+    from lib.rendering.chart_builder_mpl import render_chart_to_png as _mpl_render
+    _MPL_AVAILABLE = True
+except ImportError:
+    _MPL_AVAILABLE = False
+
+# ---------------------------------------------------------------------------
+# 3-row chart slide layout constants (13.333" × 7.5")
+# ---------------------------------------------------------------------------
+_CHART_LEFT  = Inches(0.40)
+_CHART_WIDTH = Inches(4.30)
+_TEXT_LEFT   = Inches(5.05)
+_TEXT_WIDTH  = Inches(7.93)
+_ROW_TOPS    = [Inches(1.50), Inches(3.15), Inches(4.80)]
+_ROW_H       = Inches(1.55)
 
 
 def _normalize_image_orientation(image: Image.Image) -> Image.Image:
@@ -424,6 +440,417 @@ class SlideBuilder:
 
         return slide
 
+    def _add_run_with_number_highlight(self, paragraph, text, font_size, base_color,
+                                        accent_color=None, bold=True):
+        """Split text into alternating normal/number runs; color numbers in accent_color."""
+        import re as _re
+        if accent_color is None:
+            accent_color = self.style.ACCENT_BLUE
+        NUMBER_RE = _re.compile(
+            r'\b\d[\d,]*(?:\.\d+)?(?:[KMBkm%]|\s*(?:K|M|B|billion|million|thousand))?\b'
+        )
+        paragraph.text = ""
+        pos = 0
+        for m in NUMBER_RE.finditer(text):
+            if pos < m.start():
+                run = paragraph.add_run()
+                run.text = text[pos:m.start()]
+                run.font.name  = self.style.FONT_NAME
+                run.font.size  = font_size
+                run.font.bold  = bold
+                run.font.color.rgb = base_color
+            run = paragraph.add_run()
+            run.text = m.group()
+            run.font.name  = self.style.FONT_NAME
+            run.font.size  = font_size
+            run.font.bold  = bold
+            run.font.color.rgb = accent_color
+            pos = m.end()
+        if pos < len(text):
+            run = paragraph.add_run()
+            run.text = text[pos:]
+            run.font.name  = self.style.FONT_NAME
+            run.font.size  = font_size
+            run.font.bold  = bold
+            run.font.color.rgb = base_color
+
+    def add_polished_chart_slide(
+        self,
+        slide_number: int,
+        headline: str,
+        bullet_points: List[BulletPoint],
+        use_mpl: bool = True,
+    ):
+        """
+        'Work of art' layout — branches on number of charts:
+
+        n_charts == 1  (Commentary Layout):
+          Headline full-width (Pt 20)
+          Chart LEFT 7.10" × 6.10"  |  Insight panel RIGHT 5.48"
+          Each insight block: left accent bar + bold Pt(16) + detail Pt(12)
+
+        n_charts == 2  (Expanded Strip Layout):
+          Headline full-width (Pt 20)
+          Side-by-side charts 3.65" tall
+          Expanded 3-column insight strip 2.10" at Pt(14)/Pt(11)
+
+        n_charts == 0  (fallback):
+          Insight strip only (same as original).
+        """
+        from lib.rendering.chart_builder import render_chart
+
+        MARGIN   = Inches(0.25)
+        USABLE_W = self.style.SLIDE_WIDTH - 2 * MARGIN  # 12.833"
+
+        slide_layout = self.prs.slide_layouts[6]  # Blank
+        slide = self.prs.slides.add_slide(slide_layout)
+
+        # ── Headline (Pt 20, taller box) ────────────────────────────────────
+        hl_box = slide.shapes.add_textbox(MARGIN, Inches(0.10), USABLE_W, Inches(0.65))
+        hl_tf  = hl_box.text_frame
+        hl_tf.word_wrap = True
+        hl_tf.paragraphs[0].text = headline
+        self._style_text(hl_tf, font_size=Pt(20), bold=True,
+                         color=self.style.DARK_BLUE)
+
+        # ── Identify chart bullet-points (max 2) ────────────────────────────
+        chart_bps = [bp for bp in bullet_points
+                     if getattr(bp, 'chart', None) is not None][:2]
+        n_charts  = len(chart_bps)
+
+        # ════════════════════════════════════════════════════════════════════
+        # Branch A: 1 chart — Commentary Layout
+        # ════════════════════════════════════════════════════════════════════
+        if n_charts == 1:
+            CONTENT_TOP  = Inches(0.85)
+            CONTENT_H    = Inches(6.10)
+            CHART_W      = Inches(7.10)
+            GAP          = Inches(0.25)
+            INS_LEFT     = MARGIN + CHART_W + GAP        # 7.60"
+            INS_W        = Inches(5.48)
+            BLOCK_H      = Inches(1.90)                  # 3 × 1.90 = 5.70 fits in 6.10"
+            ACCENT_BAR_W = Inches(0.05)
+            TEXT_INDENT  = Inches(0.12)
+            TEXT_W       = INS_W - ACCENT_BAR_W - TEXT_INDENT - Inches(0.05)
+
+            spec = chart_bps[0].chart
+            if use_mpl and _MPL_AVAILABLE:
+                w_in = CHART_W   / 914400
+                h_in = CONTENT_H / 914400
+                png  = _mpl_render(spec, w_in, h_in, dpi=200)
+                slide.shapes.add_picture(io.BytesIO(png), MARGIN, CONTENT_TOP,
+                                         CHART_W, CONTENT_H)
+            else:
+                title_text = (spec.title or "").strip()
+                if title_text:
+                    tb = slide.shapes.add_textbox(MARGIN, CONTENT_TOP - Inches(0.22),
+                                                  CHART_W, Inches(0.22))
+                    tf = tb.text_frame
+                    tf.word_wrap = False
+                    p = tf.paragraphs[0]
+                    p.text = title_text
+                    p.alignment = PP_ALIGN.LEFT
+                    for run in p.runs:
+                        run.font.name  = self.style.FONT_NAME
+                        run.font.size  = Pt(10)
+                        run.font.bold  = False
+                        run.font.color.rgb = RGBColor(89, 89, 89)
+                render_chart(slide, MARGIN, CONTENT_TOP, CHART_W, CONTENT_H, spec)
+
+            # Insight blocks stacked vertically on the right
+            for i, bp in enumerate(bullet_points[:3]):
+                block_top = CONTENT_TOP + i * BLOCK_H
+
+                # Left accent bar (ACCENT_BLUE, ~3pt wide)
+                bar = slide.shapes.add_shape(
+                    1,
+                    INS_LEFT, block_top + Inches(0.05),
+                    ACCENT_BAR_W, BLOCK_H - Inches(0.10)
+                )
+                bar.fill.solid()
+                bar.fill.fore_color.rgb = self.style.ACCENT_BLUE
+                bar.line.fill.background()
+
+                # Text box
+                tb = slide.shapes.add_textbox(
+                    INS_LEFT + ACCENT_BAR_W + TEXT_INDENT, block_top,
+                    TEXT_W, BLOCK_H
+                )
+                tf = tb.text_frame
+                tf.word_wrap = True
+
+                parts     = [s.strip() for s in bp.text.split('||', 1)]
+                bold_line = parts[0]
+                detail    = parts[1] if len(parts) > 1 else ""
+
+                # Bold line with number highlighting (Pt 16)
+                p = tf.paragraphs[0]
+                self._add_run_with_number_highlight(
+                    p, f"\u2022 {bold_line}", Pt(16), self.style.DARK_BLUE
+                )
+                p.space_after = Pt(5)
+
+                # Detail (Pt 12, DARK_GRAY)
+                if detail:
+                    p2 = tf.add_paragraph()
+                    p2.text = detail
+                    self._style_paragraph(p2, font_size=Pt(12),
+                                          color=self.style.DARK_GRAY)
+
+        # ════════════════════════════════════════════════════════════════════
+        # Branch B: 2 charts — Expanded Strip Layout
+        # ════════════════════════════════════════════════════════════════════
+        elif n_charts == 2:
+            CTITLE_Y = Inches(0.78)   # after headline (ends at 0.75")
+            CTITLE_H = Inches(0.18)
+            CHART_Y  = Inches(0.96)
+            CHART_H  = Inches(3.65)   # was 4.90
+
+            gap = Inches(0.15)
+            cw  = (USABLE_W - gap) // 2
+            positions = [
+                (MARGIN,            cw),
+                (MARGIN + cw + gap, cw),
+            ]
+
+            for i, (cx, cw) in enumerate(positions):
+                spec = chart_bps[i].chart
+                if use_mpl and _MPL_AVAILABLE:
+                    w_in = cw     / 914400
+                    h_in = CHART_H / 914400
+                    png  = _mpl_render(spec, w_in, h_in, dpi=200)
+                    slide.shapes.add_picture(io.BytesIO(png), cx, CHART_Y, cw, CHART_H)
+                else:
+                    title_text = (spec.title or "").strip()
+                    if title_text:
+                        tb = slide.shapes.add_textbox(cx, CTITLE_Y, cw, CTITLE_H)
+                        tf = tb.text_frame
+                        tf.word_wrap = False
+                        p = tf.paragraphs[0]
+                        p.text = title_text
+                        p.alignment = PP_ALIGN.LEFT
+                        for run in p.runs:
+                            run.font.name  = self.style.FONT_NAME
+                            run.font.size  = Pt(10)
+                            run.font.bold  = False
+                            run.font.color.rgb = RGBColor(89, 89, 89)
+                    render_chart(slide, cx, CHART_Y, cw, CHART_H, spec)
+
+            # Thin separator
+            sep_y = CHART_Y + CHART_H + Inches(0.03)
+            sep   = slide.shapes.add_shape(1, MARGIN, sep_y, USABLE_W, Pt(0.75))
+            sep.fill.solid()
+            sep.fill.fore_color.rgb = RGBColor(220, 220, 220)
+            sep.line.fill.background()
+
+            # Expanded 3-column insight strip
+            INS_Y   = sep_y + Pt(3)
+            INS_H   = Inches(2.10)   # was 1.15
+            col_w   = USABLE_W // 3
+            col_pad = Inches(0.08)
+
+            for i, bp in enumerate(bullet_points[:3]):
+                col_left = MARGIN + i * col_w
+
+                if i > 0:
+                    vsep_x = col_left - Pt(0.5)
+                    vsep   = slide.shapes.add_shape(
+                        1, vsep_x, INS_Y, Pt(0.75), INS_H)
+                    vsep.fill.solid()
+                    vsep.fill.fore_color.rgb = RGBColor(220, 220, 220)
+                    vsep.line.fill.background()
+
+                tb = slide.shapes.add_textbox(
+                    col_left + col_pad, INS_Y,
+                    col_w - 2 * col_pad, INS_H
+                )
+                tf = tb.text_frame
+                tf.word_wrap = True
+
+                parts     = [s.strip() for s in bp.text.split('||', 1)]
+                bold_line = parts[0]
+                detail    = parts[1] if len(parts) > 1 else ""
+
+                # Bold line with number highlighting (Pt 14)
+                p = tf.paragraphs[0]
+                self._add_run_with_number_highlight(
+                    p, f"\u2022 {bold_line}", Pt(14), self.style.DARK_BLUE
+                )
+                p.space_after = Pt(2)
+
+                if detail:
+                    p2 = tf.add_paragraph()
+                    p2.text = detail
+                    self._style_paragraph(p2, font_size=Pt(11),
+                                          color=self.style.DARK_GRAY)
+
+        # ════════════════════════════════════════════════════════════════════
+        # Branch C: 0 charts — fallback insight strip (original behaviour)
+        # ════════════════════════════════════════════════════════════════════
+        else:
+            sep_y = Inches(0.96) + Inches(4.90) + Inches(0.03)
+            sep   = slide.shapes.add_shape(1, MARGIN, sep_y, USABLE_W, Pt(0.75))
+            sep.fill.solid()
+            sep.fill.fore_color.rgb = RGBColor(220, 220, 220)
+            sep.line.fill.background()
+
+            INS_Y   = sep_y + Pt(3)
+            INS_H   = Inches(1.15)
+            col_w   = USABLE_W // 3
+            col_pad = Inches(0.08)
+
+            for i, bp in enumerate(bullet_points[:3]):
+                col_left = MARGIN + i * col_w
+
+                if i > 0:
+                    vsep_x = col_left - Pt(0.5)
+                    vsep   = slide.shapes.add_shape(
+                        1, vsep_x, INS_Y, Pt(0.75), INS_H)
+                    vsep.fill.solid()
+                    vsep.fill.fore_color.rgb = RGBColor(220, 220, 220)
+                    vsep.line.fill.background()
+
+                tb = slide.shapes.add_textbox(
+                    col_left + col_pad, INS_Y,
+                    col_w - 2 * col_pad, INS_H
+                )
+                tf = tb.text_frame
+                tf.word_wrap = True
+
+                parts     = [s.strip() for s in bp.text.split('||', 1)]
+                bold_line = parts[0]
+                detail    = parts[1] if len(parts) > 1 else ""
+
+                p = tf.paragraphs[0]
+                p.text = f"\u2022 {bold_line}"
+                self._style_paragraph(p, font_size=Pt(11), bold=True,
+                                      color=self.style.DARK_BLUE, space_after=Pt(2))
+                if detail:
+                    p2 = tf.add_paragraph()
+                    p2.text = detail
+                    self._style_paragraph(p2, font_size=Pt(9),
+                                          color=self.style.DARK_GRAY)
+
+        # ── Footer ──────────────────────────────────────────────────────────
+        footer_box = slide.shapes.add_textbox(
+            MARGIN, Inches(7.08), USABLE_W, Inches(0.25))
+        ff = footer_box.text_frame
+        ff.paragraphs[0].text = "AI generated. Verify before sharing"
+        self._style_text(ff, font_size=Pt(8), color=self.style.DARK_GRAY,
+                         alignment=PP_ALIGN.CENTER)
+
+        self._add_bottom_accent_line(slide)
+        return slide
+
+    def add_chart_insight_slide(
+        self,
+        slide_number: int,
+        headline: str,
+        bullet_points: List[BulletPoint],
+        section_tag: str = ""
+    ):
+        """
+        3-row slide layout: each row = [mini native chart left | insight text right].
+
+        Falls back to add_insight_slide (image-left) if all charts are None.
+        """
+        from lib.rendering.chart_builder import render_chart
+
+        slide_layout = self.prs.slide_layouts[6]  # Blank
+        slide = self.prs.slides.add_slide(slide_layout)
+
+        # Section tag
+        if section_tag:
+            tag_box = slide.shapes.add_textbox(
+                self.style.MARGIN, Inches(0.25),
+                self.style.SLIDE_WIDTH - 2 * self.style.MARGIN, Inches(0.45)
+            )
+            tf = tag_box.text_frame
+            tf.paragraphs[0].text = section_tag.upper()
+            run = tf.paragraphs[0].runs[0] if tf.paragraphs[0].runs else tf.paragraphs[0].add_run()
+            run.font.name = self.style.FONT_NAME
+            run.font.size = Pt(9)
+            run.font.bold = True
+            run.font.color.rgb = self.style.ACCENT_BLUE
+
+        # Headline
+        headline_box = slide.shapes.add_textbox(
+            self.style.MARGIN, Inches(0.75),
+            self.style.SLIDE_WIDTH - 2 * self.style.MARGIN, Inches(0.65)
+        )
+        hf = headline_box.text_frame
+        hf.word_wrap = True
+        hf.paragraphs[0].text = headline
+        self._style_text(hf, font_size=Pt(20), bold=True, color=self.style.ACCENT_BLUE)
+
+        # Thin ACCENT_BLUE divider at y=1.40"
+        divider = slide.shapes.add_shape(
+            1,  # rectangle
+            self.style.MARGIN, Inches(1.40),
+            self.style.SLIDE_WIDTH - 2 * self.style.MARGIN, Pt(1)
+        )
+        divider.fill.solid()
+        divider.fill.fore_color.rgb = self.style.ACCENT_BLUE
+        divider.line.fill.background()
+
+        # 3 rows
+        for row_idx, bp in enumerate(bullet_points[:3]):
+            row_top = _ROW_TOPS[row_idx]
+
+            # Chart on left
+            if bp.chart is not None:
+                render_chart(slide, _CHART_LEFT, row_top, _CHART_WIDTH, _ROW_H, bp.chart)
+
+            # Text on right
+            text_box = slide.shapes.add_textbox(
+                _TEXT_LEFT, row_top,
+                _TEXT_WIDTH, _ROW_H
+            )
+            tf = text_box.text_frame
+            tf.word_wrap = True
+            tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+
+            parts = [s.strip() for s in bp.text.split('||', 1)]
+            bold_line = parts[0]
+            detail = parts[1] if len(parts) > 1 else ""
+
+            # Bold line
+            p = tf.paragraphs[0]
+            p.text = f"• {bold_line}"
+            self._style_paragraph(p, font_size=Pt(13), bold=True,
+                                  color=self.style.DARK_BLUE, space_after=Pt(3))
+
+            # Detail line
+            if detail:
+                p2 = tf.add_paragraph()
+                p2.text = detail
+                self._style_paragraph(p2, font_size=Pt(11), color=self.style.DARK_GRAY)
+
+            # Row separator (except after last row)
+            if row_idx < min(2, len(bullet_points) - 1):
+                sep_y = row_top + _ROW_H - Pt(0.5)
+                sep = slide.shapes.add_shape(
+                    1,
+                    self.style.MARGIN, sep_y,
+                    self.style.SLIDE_WIDTH - 2 * self.style.MARGIN, Pt(0.5)
+                )
+                sep.fill.solid()
+                sep.fill.fore_color.rgb = RGBColor(200, 200, 200)
+                sep.line.fill.background()
+
+        # Footer
+        footer_box = slide.shapes.add_textbox(
+            self.style.MARGIN, Inches(6.90),
+            self.style.SLIDE_WIDTH - 2 * self.style.MARGIN, Inches(0.45)
+        )
+        ff = footer_box.text_frame
+        ff.paragraphs[0].text = "AI generated. Verify before sharing"
+        self._style_text(ff, font_size=Pt(9), color=self.style.DARK_GRAY,
+                         alignment=PP_ALIGN.CENTER)
+
+        self._add_bottom_accent_line(slide)
+        return slide
+
     def _add_image_with_border(
         self,
         slide,
@@ -722,13 +1149,28 @@ def render_presentation(
                     except Exception as e:
                         print(f"  WARNING: Could not load image for slide {slide_num}: {e}")
 
-                # Add slide even if image is missing (better than skipping entirely)
-                builder.add_insight_slide(
-                    slide_number=slide_num,
-                    headline=insight.headline,
-                    insights=insight.bullet_points,
-                    source_image=source_image
+                # Determine whether to use chart-row layout or image-left layout
+                has_charts = any(
+                    hasattr(bp, 'chart') and bp.chart is not None
+                    for bp in insight.bullet_points
                 )
+                if has_charts:
+                    builder.add_polished_chart_slide(
+                        slide_number=slide_num,
+                        headline=insight.headline,
+                        bullet_points=insight.bullet_points
+                    )
+                else:
+                    plain = [
+                        bp.text if hasattr(bp, 'text') else str(bp)
+                        for bp in insight.bullet_points
+                    ]
+                    builder.add_insight_slide(
+                        slide_number=slide_num,
+                        headline=insight.headline,
+                        insights=plain,
+                        source_image=source_image
+                    )
             else:
                 print(f"  WARNING: No insight found for slide {slide_num}: {title}")
     else:
@@ -755,13 +1197,28 @@ def render_presentation(
                 if source_image:
                     source_image = _normalize_image_orientation(source_image)
 
-                # Add insight slide
-                builder.add_insight_slide(
-                    slide_number=slide_idx + 1,
-                    headline=insight.headline,
-                    insights=insight.bullet_points,
-                    source_image=source_image
+                # Determine whether to use chart-row layout or image-left layout
+                has_charts = any(
+                    hasattr(bp, 'chart') and bp.chart is not None
+                    for bp in insight.bullet_points
                 )
+                if has_charts:
+                    builder.add_polished_chart_slide(
+                        slide_number=slide_idx + 1,
+                        headline=insight.headline,
+                        bullet_points=insight.bullet_points
+                    )
+                else:
+                    plain = [
+                        bp.text if hasattr(bp, 'text') else str(bp)
+                        for bp in insight.bullet_points
+                    ]
+                    builder.add_insight_slide(
+                        slide_number=slide_idx + 1,
+                        headline=insight.headline,
+                        insights=plain,
+                        source_image=source_image
+                    )
 
     # Add recommendations slide (if provided)
     if '__recommendations__' in insights:
