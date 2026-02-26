@@ -100,8 +100,28 @@ Read temp/slide_2.png
 - Format: "[Action verb] + [what to do] + [expected outcome]"
 - Be specific: "Pilot agent training with HR Generalists (140 actions/user) to establish best practices" NOT "Improve training"
 
+**Deck Title & Subtitle:**
+Generate a compelling `deck_title` that captures the core story of the deck — the single most important narrative an executive should remember. It should be positively framed and attention-grabbing.
+
+Format: `"[Evocative phrase]: [Core finding or story]"`
+
+Examples of great deck titles:
+- "Copilot Impact Confirmed: $14.7M in Value with 84% Active Adoption"
+- "From Reach to Routine: Building AI Habits Across the Organization"
+- "Momentum Confirmed: Three Platforms, One Direction, Zero Plateau"
+
+The `deck_subtitle` describes scope: what platforms/products are covered, the company/org name if known, and the time period.
+
+Format: `"[Platform 1] · [Platform 2] · [Platform 3] · [Month Year] – [Month Year]"`
+
+Examples:
+- "Agents · Unlicensed Chat · M365 Copilot · Mar – Jun 2025"
+- "Microsoft 365 Copilot Impact Report · Apr–Oct 2025"
+
 ```json
 {
+  "deck_title": "Compelling story-driven title",
+  "deck_subtitle": "Agents · Chat · M365 Copilot · Month Year – Month Year",
   "executive_summary": [
     "Finding with specific number → business implication",
     "Finding with specific number → business implication",

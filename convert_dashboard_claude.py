@@ -247,19 +247,26 @@ Follow Claude PowerPoint Constitution Section 5A guidelines.
 
 Save results to: temp/claude_insights.json
 
+Also generate a compelling deck_title and deck_subtitle:
+- deck_title: the single core story of the deck, positively framed.
+  Format: "[Evocative phrase]: [Core finding or story]"
+  Examples: "Copilot Impact Confirmed: $14.7M in Value with 84% Active Adoption"
+            "From Reach to Routine: Building AI Habits Across the Organization"
+- deck_subtitle: scope descriptor — platforms covered and time period.
+  Format: "[Platform 1] · [Platform 2] · [Month Year] – [Month Year]"
+  Examples: "Agents · Unlicensed Chat · M365 Copilot · Mar – Jun 2025"
+
 Format:
 {
+  "deck_title": "Compelling story-driven title",
+  "deck_subtitle": "Agents · Chat · M365 Copilot · Month Year – Month Year",
   "executive_summary": [
     "Finding with specific number -> business implication",
-    "Finding with specific number -> business implication",
-    "Finding with specific number -> business implication",
-    "Finding with specific number -> business implication",
-    "Finding with specific number -> business implication"
+    ...
   ],
   "recommendations": [
     "Action: Specific recommendation with expected outcome",
-    "Action: Specific recommendation with expected outcome",
-    "Action: Specific recommendation with expected outcome"
+    ...
   ],
   "slides": [
     {
@@ -325,8 +332,19 @@ STEP 6: Save insights to temp/claude_insights.json (same format as always)
 IMPORTANT: Include ALL pages in your output. Use slide_number matching the
 analysis_request.json to ensure complete coverage.
 
+Also generate a compelling deck_title and deck_subtitle:
+- deck_title: the single core story of the deck, positively framed.
+  Format: "[Evocative phrase]: [Core finding or story]"
+  Examples: "Copilot Impact Confirmed: $14.7M in Value with 84% Active Adoption"
+            "From Reach to Routine: Building AI Habits Across the Organization"
+- deck_subtitle: scope descriptor — platforms and time period (infer from model data if possible).
+  Format: "[Platform 1] · [Platform 2] · [Month Year] – [Month Year]"
+  Examples: "Agents · Unlicensed Chat · M365 Copilot · Mar – Jun 2025"
+
 Output format:
 {
+  "deck_title": "Compelling story-driven title",
+  "deck_subtitle": "Agents · Chat · M365 Copilot · Month Year – Month Year",
   "executive_summary": [
     "Finding with specific number -> business implication",
     ...  (5 bullets total, cross-page synthesis)
