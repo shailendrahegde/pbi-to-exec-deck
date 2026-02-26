@@ -9,7 +9,8 @@ This project converts Power BI dashboard exports (.pptx or .pdf) into executive-
 **Supported Input Formats:**
 - PowerPoint (.pptx) - Exported from Power BI
 - PDF (.pdf) - Exported from Power BI
-- **Note:** Both formats produce identical output quality (16:9 PPTX)
+- Power BI Project (.pbip) - Live model access via powerbi-modeling MCP
+- **Note:** All formats produce identical output quality (16:9 PPTX)
 
 ## Core Philosophy
 
@@ -130,6 +131,81 @@ Read temp/slide_2.png
 ```
 
 **Save to:** `temp/claude_insights.json`
+
+---
+
+## PBIP Workflow (when source is a .pbip file)
+
+When a user has a `.pbip` Power BI project open in Power BI Desktop, this
+path queries the **live in-memory model** directly — no screenshots needed.
+
+```bash
+python convert_dashboard_claude.py --source "MyReport.pbip"
+```
+
+### What's different from the standard workflow
+
+| | Standard (PDF/PPTX) | PBIP |
+|---|---|---|
+| Data source | Claude reads images | Claude queries live model via MCP |
+| Accuracy | Visual estimation | Exact values from DAX |
+| Depth | What's visible on screen | Can query any dimension/filter |
+| Measure context | Unknown | Full DAX expression available |
+
+### When `temp/pbip_context.json` exists alongside `analysis_request.json`:
+
+**Step 1: Read the context file**
+```
+Read temp/pbip_context.json
+```
+This contains:
+- `pages` — report page structure with visual types and field bindings
+- `model.measures` — every measure with its full DAX expression
+- `model.tables` — table and column structure
+- `model.relationships` — table relationships
+- `dax_queries` — pre-built DAX queries, one group per page
+
+**Step 2: Execute DAX queries via the `powerbi-modeling` MCP**
+
+For each page in `dax_queries`, run the queries using the MCP tool:
+- The MCP connects to the running Power BI Desktop instance
+- The returned table rows are your data source — use exact values
+- State the measure name alongside the value for traceability
+
+Example MCP call pattern:
+```
+execute_query(database="...", dax="EVALUATE ROW(\"Total Revenue\", [Total Revenue])")
+```
+
+**Step 3: Drill deeper with custom DAX (optional)**
+
+Modify pre-built queries to apply filters or explore dimensions:
+```dax
+-- Filter to last 30 days
+EVALUATE
+CALCULATETABLE(
+    SUMMARIZECOLUMNS('Date'[Month], "Revenue", [Total Revenue]),
+    DATESINPERIOD('Date'[Date], TODAY(), -30, DAY)
+)
+```
+
+**Step 4: Use `measure_dax` to understand HOW each KPI is calculated**
+- Measure uses `DATESYTD()` → note it's a year-to-date figure in insights
+- Measure uses `DIVIDE()` with an `IF()` → zero-division guard; note denominator context
+- Measure uses `CALCULATE()` with a filter → be explicit about what filter applies
+
+**Step 5: Generate insights from queried values — NOT from estimation**
+- Every number in insights must come from an executed DAX query result
+- Follow the same insight formula as the standard workflow
+- Reference measure names in parentheses: "47.3% completion rate ([Project Completion Rate])"
+
+**Step 6: Write insights to `temp/claude_insights.json`** (same format as always)
+
+### If DAX queries return no data
+
+- Power BI Desktop may not be open, or the MCP may not be connected
+- Fall back to any companion images if available (`temp/slide_N.png`)
+- If no images exist either, mark slide as "Insufficient data for analysis"
 
 ---
 

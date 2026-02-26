@@ -73,24 +73,32 @@ def classify_slide_type(title):
 
 def detect_file_type(file_path):
     """
-    Detect if file is PPTX or PDF based on extension.
+    Detect if file is PPTX, PDF, or PBIP based on extension / directory contents.
 
     Args:
-        file_path: Path to input file
+        file_path: Path to input file or directory
 
     Returns:
-        'pptx' or 'pdf'
+        'pptx', 'pdf', or 'pbip'
 
     Raises:
         ValueError: If file type is unsupported
     """
-    suffix = Path(file_path).suffix.lower()
+    p = Path(file_path)
+    suffix = p.suffix.lower()
+
     if suffix == '.pptx':
         return 'pptx'
     elif suffix == '.pdf':
         return 'pdf'
+    elif suffix == '.pbip':
+        return 'pbip'
+    elif p.is_dir() and any(p.glob('*.pbip')):
+        return 'pbip'
     else:
-        raise ValueError(f"Unsupported file type: {suffix}. Supported formats: .pptx, .pdf")
+        raise ValueError(
+            f"Unsupported file type: {suffix}. Supported formats: .pptx, .pdf, .pbip"
+        )
 
 
 def prepare_for_claude_analysis(source_path):
@@ -108,6 +116,10 @@ def prepare_for_claude_analysis(source_path):
 
     if file_type == 'pdf':
         return prepare_pdf_for_claude_analysis(source_path)
+
+    if file_type == 'pbip':
+        from lib.extraction.pbip_extractor import prepare_pbip_for_claude_analysis
+        return prepare_pbip_for_claude_analysis(source_path)
 
     # Original PPTX logic continues below
     print("=" * 70)
@@ -192,6 +204,16 @@ def trigger_claude_analysis(request_file):
     with open(request_file, 'r', encoding='utf-8') as f:
         request = json.load(f)
 
+    is_pbip = request.get('source_type') == 'pbip' or Path('temp/pbip_context.json').exists()
+
+    if is_pbip:
+        _trigger_pbip_analysis(request)
+    else:
+        _trigger_image_analysis(request)
+
+
+def _trigger_image_analysis(request):
+    """Show image-based analysis instructions (PPTX / PDF path)."""
     print(f"\nClaude Code: Please analyze these {request['total_slides']} dashboard images.\n")
 
     print("For each slide:")
@@ -246,6 +268,84 @@ Format:
       "headline": "[Number] + [Insight]",
       "insights": ["insight 1", "insight 2", "insight 3"],
       "numbers_used": ["123", "45%"]
+    }
+  ]
+}
+""")
+    print("-" * 70)
+
+
+def _trigger_pbip_analysis(request):
+    """Show PBIP / MCP-based analysis instructions."""
+    total = request['total_slides']
+    print(f"\nClaude Code: Please analyze this Power BI report ({total} pages) "
+          f"using the live model via MCP.\n")
+
+    print("Pages to analyze:")
+    for slide in request['slides']:
+        print(f"  - Page {slide['slide_number']}: {slide['title']} ({slide['slide_type']})")
+
+    print("\n" + "-" * 70)
+    print("CLAUDE CODE TASK (PBIP / MCP MODE):")
+    print("-" * 70)
+    print("""
+Act as senior analyst advisor to IT decision maker.
+
+This is a PBIP project — you have access to the LIVE Power BI model via
+the powerbi-modeling MCP server.  DO NOT estimate numbers from images.
+Query the model directly for exact values.
+
+STEP 1: Read the context file
+    Read temp/pbip_context.json
+    This contains: page structure, model metadata, and pre-built DAX queries.
+
+STEP 2: For each page, execute its DAX queries using the powerbi-modeling MCP
+    - Use the execute_query (or equivalent) MCP tool
+    - Power BI Desktop must be open with this project for the MCP to connect
+    - Run each query in pbip_context.json → dax_queries[n].queries[m].dax
+    - The returned table rows ARE your data source — use exact values
+
+STEP 3: To drill deeper or apply filters, modify the DAX:
+    - Wrap with CALCULATETABLE(..., FILTER(...)) for segment analysis
+    - Use DATESYTD() / DATESINPERIOD() for time-filtered views
+    - Compare filtered vs unfiltered for delta / trend insights
+
+STEP 4: Use measure_dax fields to understand HOW each KPI is calculated:
+    - If it uses DATESYTD() → it's a year-to-date figure
+    - If it uses DIVIDE() → watch for zero-division handling
+    - Mention the calculation context in your insights where relevant
+
+STEP 5: Generate analyst-grade insights from QUERIED values (not estimates):
+    - Every number in insights must come from an executed DAX query result
+    - Include the measure name alongside the value for traceability
+    - Follow the same insight formula: headline + 3 insights per slide
+
+STEP 6: Save insights to temp/claude_insights.json (same format as always)
+
+IMPORTANT: Include ALL pages in your output. Use slide_number matching the
+analysis_request.json to ensure complete coverage.
+
+Output format:
+{
+  "executive_summary": [
+    "Finding with specific number -> business implication",
+    ...  (5 bullets total, cross-page synthesis)
+  ],
+  "recommendations": [
+    "Action: Specific recommendation with expected outcome",
+    ...  (3-5 bullets)
+  ],
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "Insight-led title",
+      "headline": "Clear takeaway message",
+      "insights": [
+        "Bold punchy line || Supporting evidence with queried value [MeasureName]",
+        "Bold punchy line || Pattern or opportunity from data",
+        "Bold punchy line || Actionable recommendation"
+      ],
+      "numbers_used": ["exact value from DAX result", "..."]
     }
   ]
 }
@@ -322,7 +422,14 @@ def generate_output_filename(source_path):
     """Generate output filename from source (e.g., dashboard.pptx -> dashboard_executive.pptx)"""
     from pathlib import Path
     source = Path(source_path)
-    # Output is always .pptx regardless of input format (PPTX or PDF)
+    # For directories (PBIP project folder), use the folder name
+    if source.is_dir():
+        # Look for a .pbip file to get the project name
+        pbip_files = list(source.glob('*.pbip'))
+        if pbip_files:
+            return str(source / f"{pbip_files[0].stem}_executive.pptx")
+        return str(source / f"{source.name}_executive.pptx")
+    # Output is always .pptx regardless of input format (PPTX, PDF, or PBIP)
     return str(source.parent / f"{source.stem}_executive.pptx")
 
 
@@ -350,7 +457,7 @@ Examples:
 """
     )
 
-    parser.add_argument('--source', help='Source PowerPoint or PDF file')
+    parser.add_argument('--source', help='Source PowerPoint, PDF, or PBIP file/directory')
     parser.add_argument('--output', help='Output PowerPoint file (default: source_executive.pptx)')
     parser.add_argument('--prepare', action='store_true',
                        help='Prepare slides for Claude analysis (Step 1 only)')

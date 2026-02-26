@@ -645,10 +645,10 @@ def render_presentation(
     """
     file_type = Path(source_path).suffix.lower()
 
-    # For PDF sources, images are already in temp/ directory
-    # For PPTX sources, we load the presentation directly
-    if file_type == '.pdf':
-        # Create a dummy presentation (not used for image extraction)
+    # For PDF and PBIP sources, images are already in temp/ (or absent for PBIP).
+    # For PPTX sources, we load the presentation directly.
+    if file_type in ('.pdf', '.pbip') or Path(source_path).is_dir():
+        # Create a blank dummy presentation (not used for image extraction)
         from pptx import Presentation as PrsClass
         source_prs = PrsClass()
         source_images_map = _get_source_images_from_temp(source_path)
