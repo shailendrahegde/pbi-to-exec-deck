@@ -101,6 +101,8 @@ Read temp/slide_2.png
 
 ```json
 {
+  "deck_title": "Compelling, persuasive title for the presentation",
+  "deck_subtitle": "Optional subtitle — e.g. date range, org name, or focus area",
   "executive_summary": [
     "Finding with specific number → business implication",
     "Finding with specific number → business implication",
@@ -130,6 +132,32 @@ Read temp/slide_2.png
 ```
 
 **Save to:** `temp/claude_insights.json`
+
+---
+
+## Deck Title Guidelines
+
+**ALWAYS generate `deck_title` and `deck_subtitle`.** Never leave these blank — the default "Executive Insights" is generic and forgettable.
+
+**`deck_title`** — The cover slide headline. Should be:
+- Compelling and persuasive, not descriptive
+- Positive framing: opportunities and wins, not gaps or problems
+- Specific to the content: reference the org, product, or key finding
+- 5–10 words max
+
+**Good examples:**
+- ✅ "Swetha Org: Strong Copilot Momentum with Clear Scaling Opportunities"
+- ✅ "M365 Copilot: 40% Power Users and Growing"
+- ✅ "Copilot Adoption Accelerating — Efficiency and Wellbeing Gains Confirmed"
+
+**Bad examples:**
+- ❌ "Executive Insights" (generic default)
+- ❌ "Copilot Usage Report" (descriptive, not persuasive)
+- ❌ "Low Adoption in Some Teams" (negative framing)
+
+**`deck_subtitle`** — One line of context. Use the date range from the dashboard filters and/or the org/leader name.
+- Example: "Swetha Org · Dec 2025 – Feb 2026"
+- Example: "Super User Analysis · Q1 2026"
 
 ---
 
