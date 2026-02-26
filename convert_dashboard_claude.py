@@ -101,6 +101,54 @@ def detect_file_type(file_path):
         )
 
 
+def _check_pbi_mcp_setup():
+    """
+    Warn clearly if the Power BI Modeling MCP is not installed/configured.
+    Does NOT block execution — PBIP analysis can still fall back to screenshots.
+    """
+    mcp_json = Path(".mcp.json")
+
+    # Check .mcp.json for a powerbi-modeling entry
+    configured = False
+    exe_valid  = False
+    if mcp_json.exists():
+        try:
+            cfg    = json.loads(mcp_json.read_text(encoding="utf-8"))
+            server = cfg.get("mcpServers", {}).get("powerbi-modeling")
+            if server:
+                configured = True
+                exe_valid  = Path(server.get("command", "")).exists()
+        except Exception:
+            pass
+
+    if configured and exe_valid:
+        print("  OK Power BI Modeling MCP configured — DAX query mode enabled")
+        return
+
+    print()
+    print("  " + "!" * 66)
+    if not configured:
+        print("  !! Power BI Modeling MCP is NOT configured")
+        print("  !!")
+        print("  !! Without it, Claude will analyse screenshots only (lower accuracy).")
+        print("  !! For exact DAX values, run the setup script first:")
+        print("  !!")
+        print("  !!     python setup_pbi_mcp.py")
+        print("  !!")
+        print("  !! Then restart Claude Code and re-run this command.")
+    else:
+        # Configured but exe missing (moved/deleted)
+        print("  !! Power BI MCP is configured in .mcp.json but the executable")
+        print("  !! was not found at the registered path.")
+        print("  !! Re-run the setup script to fix the path:")
+        print("  !!")
+        print("  !!     python setup_pbi_mcp.py --force")
+    print("  " + "!" * 66)
+    print()
+    print("  Continuing with screenshot-based analysis as fallback...")
+    print()
+
+
 def prepare_for_claude_analysis(source_path):
     """
     Extract slides/pages and prepare analysis request for Claude.
@@ -118,6 +166,7 @@ def prepare_for_claude_analysis(source_path):
         return prepare_pdf_for_claude_analysis(source_path)
 
     if file_type == 'pbip':
+        _check_pbi_mcp_setup()
         from lib.extraction.pbip_extractor import prepare_pbip_for_claude_analysis
         return prepare_pbip_for_claude_analysis(source_path)
 
@@ -256,7 +305,89 @@ Also generate a compelling deck_title and deck_subtitle:
   Format: "[Platform 1] · [Platform 2] · [Month Year] – [Month Year]"
   Examples: "Agents · Unlicensed Chat · M365 Copilot · Mar – Jun 2025"
 
-Format:
+CHART DATA (OPTIONAL BUT RECOMMENDED):
+Each insight can include a native PowerPoint chart. When you can extract
+specific data values from the dashboard, add a "chart" object alongside
+the "text" field. If no data is extractable, set "chart": null.
+
+Insight format (new, with charts):
+  {"text": "Bold line || Detail text", "chart": { ... chart spec ... }}
+
+Insight format (legacy, still accepted):
+  "Bold line || Detail text"
+
+CHART TYPE DECISION GUIDE:
+  - Rankings / comparisons by category  → "bar" (horizontal) or "column" (vertical)
+  - Stacked breakdown by group          → "bar_stacked" or "column_stacked"
+  - Trend over time (one or more lines) → "line" or "area"
+  - Part-of-whole distribution          → "pie" or "donut"
+  - Single KPI number with label        → "kpi"
+  - Two-axis correlation (x vs y)       → "scatter"
+  - Frequency/engagement tiers          → "funnel"
+  - Portfolio of items by size          → "treemap"
+  - Completion % of a target            → "gauge"
+  - Multi-dim comparison grid           → "heatmap"
+  - Tabular leaderboard data            → "table"
+  - Multi-axis capability scores        → "radar"
+  - No clear chart type / no data       → null
+
+CHART SPEC EXAMPLES (include all visible data points):
+
+bar / column:
+  {"type": "bar", "title": "Sessions by Org", "highlight": "Finance",
+   "data": [{"label": "Finance", "value": 5.5}, {"label": "Legal", "value": 3.26}]}
+
+line:
+  {"type": "line", "title": "Active Users Over Time",
+   "series": [
+     {"name": "Agents", "points": [{"x": "Mar", "y": 180}, {"x": "Apr", "y": 220}]},
+     {"name": "Chat",   "points": [{"x": "Mar", "y": 2500}, {"x": "Apr", "y": 2700}]}
+   ]}
+
+kpi:
+  {"type": "kpi", "value": "4,381", "label": "Active Copilot Users", "subtitle": "across 3 platforms"}
+
+donut:
+  {"type": "donut", "title": "Usage Tiers",
+   "data": [{"label": "Light", "value": 144}, {"label": "Moderate", "value": 18}, {"label": "Daily", "value": 12}]}
+
+funnel:
+  {"type": "funnel", "title": "Engagement Funnel",
+   "data": [{"label": "Licensed", "value": 5000}, {"label": "Active", "value": 4381}, {"label": "Daily", "value": 12}]}
+
+heatmap:
+  {"type": "heatmap", "title": "Usage by Dept × App",
+   "rows": ["Finance", "Legal"], "columns": ["Chat", "M365", "Agents"],
+   "values": [[5.5, 4.3, 7.6], [3.0, 4.3, 3.5]]}
+
+table:
+  {"type": "table",
+   "columns": ["Department", "Sessions/wk", "Users"],
+   "rows": [["Finance", "5.5", "276"], ["Legal", "3.26", "314"]],
+   "highlight_col": 0}
+
+gauge:
+  {"type": "gauge", "value": "79", "max": 100, "label": "Return Rate", "threshold": 50}
+
+scatter:
+  {"type": "scatter", "title": "Engagement vs Frequency",
+   "series": [
+     {"name": "Finance", "x": 5.5, "y": 4.2, "highlight": true},
+     {"name": "Legal", "x": 3.26, "y": 3.1}
+   ]}
+
+treemap:
+  {"type": "treemap", "title": "Agent Templates by Usage",
+   "data": [{"label": "Visual Creator", "value": 297}, {"label": "Data Analyst", "value": 180}]}
+
+ACCURACY RULES FOR CHART DATA:
+- Only include data points you can point to on the dashboard
+- Match units exactly (13 vs 13K vs 13M)
+- For bar/column charts with >12 bars, trim to the most meaningful values
+- For heatmaps with >6x6 cells, trim to most significant rows/columns
+- Verify every value against its label before including
+
+Output format:
 {
   "deck_title": "Compelling story-driven title",
   "deck_subtitle": "Agents · Chat · M365 Copilot · Month Year – Month Year",
@@ -273,7 +404,20 @@ Format:
       "slide_number": 1,
       "title": "Insight-led title (can differ from source)",
       "headline": "[Number] + [Insight]",
-      "insights": ["insight 1", "insight 2", "insight 3"],
+      "insights": [
+        {
+          "text": "Bold punchy line || Supporting evidence with specific data",
+          "chart": {"type": "bar", "title": "...", "data": [...]}
+        },
+        {
+          "text": "KPI insight || Detail",
+          "chart": {"type": "kpi", "value": "4,381", "label": "Active Users"}
+        },
+        {
+          "text": "Trend insight || Detail",
+          "chart": null
+        }
+      ],
       "numbers_used": ["123", "45%"]
     }
   ]
@@ -341,6 +485,59 @@ Also generate a compelling deck_title and deck_subtitle:
   Format: "[Platform 1] · [Platform 2] · [Month Year] – [Month Year]"
   Examples: "Agents · Unlicensed Chat · M365 Copilot · Mar – Jun 2025"
 
+CHART DATA (OPTIONAL BUT RECOMMENDED):
+Each insight can include a native PowerPoint chart. When DAX queries return
+usable data, add a "chart" object alongside the "text" field.
+All chart values must come from executed DAX query results only.
+If no DAX data is available for a chart, set "chart": null.
+
+CHART TYPE DECISION GUIDE:
+  - Rankings / comparisons by category  → "bar" (horizontal) or "column" (vertical)
+  - Stacked breakdown by group          → "bar_stacked" or "column_stacked"
+  - Trend over time (one or more lines) → "line" or "area"
+  - Part-of-whole distribution          → "pie" or "donut"
+  - Single KPI number with label        → "kpi"
+  - Two-axis correlation (x vs y)       → "scatter"
+  - Frequency/engagement tiers          → "funnel"
+  - Portfolio of items by size          → "treemap"
+  - Completion % of a target            → "gauge"
+  - Multi-dim comparison grid           → "heatmap"
+  - Tabular leaderboard data            → "table"
+  - No clear chart type / no data       → null
+
+CHART SPEC EXAMPLES (all values from DAX results):
+
+bar / column:
+  {"type": "bar", "title": "Sessions by Org", "highlight": "Finance",
+   "data": [{"label": "Finance", "value": 5.5}, {"label": "Legal", "value": 3.26}]}
+
+line:
+  {"type": "line", "title": "Active Users Over Time",
+   "series": [
+     {"name": "Agents", "points": [{"x": "Mar", "y": 180}, {"x": "Apr", "y": 220}]}
+   ]}
+
+kpi:
+  {"type": "kpi", "value": "4,381", "label": "Active Copilot Users", "subtitle": "across 3 platforms"}
+
+donut:
+  {"type": "donut", "title": "Usage Tiers",
+   "data": [{"label": "Light", "value": 144}, {"label": "Moderate", "value": 18}]}
+
+funnel:
+  {"type": "funnel", "data": [{"label": "Licensed", "value": 5000}, {"label": "Active", "value": 4381}]}
+
+heatmap:
+  {"type": "heatmap", "rows": ["Finance", "Legal"], "columns": ["Chat", "M365"],
+   "values": [[5.5, 4.3], [3.0, 4.3]]}
+
+table:
+  {"type": "table", "columns": ["Department", "Sessions/wk"],
+   "rows": [["Finance", "5.5"], ["Legal", "3.26"]], "highlight_col": 0}
+
+gauge:
+  {"type": "gauge", "value": "79", "max": 100, "label": "Return Rate"}
+
 Output format:
 {
   "deck_title": "Compelling story-driven title",
@@ -359,9 +556,18 @@ Output format:
       "title": "Insight-led title",
       "headline": "Clear takeaway message",
       "insights": [
-        "Bold punchy line || Supporting evidence with queried value [MeasureName]",
-        "Bold punchy line || Pattern or opportunity from data",
-        "Bold punchy line || Actionable recommendation"
+        {
+          "text": "Bold punchy line || Supporting evidence with queried value [MeasureName]",
+          "chart": {"type": "kpi", "value": "4,381", "label": "Active Users"}
+        },
+        {
+          "text": "Bold punchy line || Pattern or opportunity from data",
+          "chart": {"type": "bar", "title": "By Dept", "data": [...]}
+        },
+        {
+          "text": "Bold punchy line || Actionable recommendation",
+          "chart": null
+        }
       ],
       "numbers_used": ["exact value from DAX result", "..."]
     }
@@ -390,6 +596,7 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
 
     # Convert Claude's insights to expected format
     # Key by slide_number (not title) to ensure all slides are included
+    from lib.analysis.insights import parse_bullet_points
     insights = {}
     for slide_insight in insights_data.get('slides', []):
         slide_num = slide_insight.get('slide_number')
@@ -397,7 +604,7 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
             # Use slide_number as key for guaranteed matching
             insights[slide_num] = Insight(
                 headline=slide_insight['headline'],
-                bullet_points=slide_insight['insights'],
+                bullet_points=parse_bullet_points(slide_insight.get('insights', [])),
                 source_numbers=slide_insight.get('numbers_used', [])
             )
         else:
@@ -406,7 +613,7 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
             if title:
                 insights[title] = Insight(
                     headline=slide_insight['headline'],
-                    bullet_points=slide_insight['insights'],
+                    bullet_points=parse_bullet_points(slide_insight.get('insights', [])),
                     source_numbers=slide_insight.get('numbers_used', [])
                 )
 
