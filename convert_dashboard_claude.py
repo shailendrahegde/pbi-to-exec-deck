@@ -93,11 +93,13 @@ def detect_file_type(file_path):
         return 'pdf'
     elif suffix == '.pbip':
         return 'pbip'
+    elif suffix == '.pbix':
+        return 'pbix'
     elif p.is_dir() and any(p.glob('*.pbip')):
         return 'pbip'
     else:
         raise ValueError(
-            f"Unsupported file type: {suffix}. Supported formats: .pptx, .pdf, .pbip"
+            f"Unsupported file type: {suffix}. Supported formats: .pptx, .pdf, .pbip, .pbix"
         )
 
 
@@ -169,6 +171,11 @@ def prepare_for_claude_analysis(source_path):
         _check_pbi_mcp_setup()
         from lib.extraction.pbip_extractor import prepare_pbip_for_claude_analysis
         return prepare_pbip_for_claude_analysis(source_path)
+
+    if file_type == 'pbix':
+        _check_pbi_mcp_setup()
+        from lib.extraction.pbix_extractor import prepare_pbix_for_claude_analysis
+        return prepare_pbix_for_claude_analysis(source_path)
 
     # Original PPTX logic continues below
     print("=" * 70)
@@ -638,9 +645,22 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
     passed, report = validate_output(insights)
     print("\n" + report)
 
+    # Clean up stale insight files so they don't bleed into the next conversion
+    _cleanup_insight_files()
+
     print("\n" + "=" * 70)
     print("OK CONVERSION COMPLETE")
     print("=" * 70)
+
+
+def _cleanup_insight_files():
+    """Delete per-run insight artefacts after a successful build."""
+    import os
+    for fname in ("temp/claude_insights.json", "temp/write_insights.py"):
+        try:
+            os.remove(fname)
+        except FileNotFoundError:
+            pass
 
 
 def generate_output_filename(source_path):

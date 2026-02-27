@@ -11,3 +11,6 @@ PyMuPDF>=1.23.0
 
 # Markdown conversion
 markitdown>=0.0.1
+
+# Chart rendering (matplotlib PNG path)
+matplotlib>=3.7.0

@@ -106,11 +106,13 @@ class ConstitutionValidator:
 
         return results
 
-    def _validate_actionability(self, slide_title: str, bullets: List[str]) -> List[ValidationResult]:
+    def _validate_actionability(self, slide_title: str, bullets) -> List[ValidationResult]:
         """Validate insights are actionable, not just data restatements"""
         results = []
 
-        combined_text = ' '.join(bullets).lower()
+        combined_text = ' '.join(
+            b.text if hasattr(b, 'text') else str(b) for b in bullets
+        ).lower()
 
         # Check for action words
         has_action = any(word in combined_text for word in self.ACTION_WORDS)
@@ -132,12 +134,13 @@ class ConstitutionValidator:
 
         # Check for generic statements
         for bullet in bullets:
+            bullet_text = bullet.text if hasattr(bullet, 'text') else str(bullet)
             for pattern in self.GENERIC_PATTERNS:
-                if re.search(pattern, bullet.lower()):
+                if re.search(pattern, bullet_text.lower()):
                     results.append(ValidationResult(
                         passed=False,
                         rule="Section 5: No generic statements",
-                        message=f"Bullet contains generic statement: {bullet[:50]}...",
+                        message=f"Bullet contains generic statement: {bullet_text[:50]}...",
                         severity="error"
                     ))
                     break

@@ -1039,18 +1039,38 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
         # Use wb-relative bounds so the search works regardless of screen resolution.
         _tab_strip  = None
         _best_width = 0
+        _best_named = 0   # count of named TabItem children — primary selection criterion
         _tab_candidates = []
         for _ctrl in _pbi_win.descendants(control_type='Tab'):
             _r  = _ctrl.rectangle()
             _rw = _r.right - _r.left
             _tab_candidates.append((_r.left, _r.top, _r.right, _r.bottom, _rw))
-            # Tab strip: sits within 100px of window bottom, at least 500px wide
-            if (_r.top > (wb - 100) and _r.bottom < (wb + 10) and _rw > _best_width):
+
+            # Strategy 1 (preferred): Tab with the most named TabItem children.
+            # This works even when PBI Desktop reports tab coordinates in WPF
+            # logical pixels (DPI-scaled) that don't match screen coordinates.
+            try:
+                _children = _ctrl.children(control_type='TabItem')
+                _named = sum(1 for _c in _children if _c.window_text().strip())
+            except Exception:
+                _named = 0
+            if _named > _best_named or (_named == _best_named and _rw > _best_width):
                 _tab_strip  = _ctrl
                 _best_width = _rw
+                _best_named = _named
+
+        # Strategy 2 fallback: position-based (original logic) if no named children found
+        if _best_named == 0:
+            _tab_strip = None
+            _best_width = 0
+            for _ctrl in _pbi_win.descendants(control_type='Tab'):
+                _r  = _ctrl.rectangle()
+                _rw = _r.right - _r.left
+                if (_r.top > (wb - 100) and _r.bottom < (wb + 10) and _rw > _best_width):
+                    _tab_strip  = _ctrl
+                    _best_width = _rw
 
         if _tab_strip is None:
-            # Diagnostic: show what Tab controls were found
             print(f"  DEBUG: {len(_tab_candidates)} Tab control(s) found (wb={wb}):")
             for _tc in _tab_candidates[:10]:
                 print(f"    rect=({_tc[0]},{_tc[1]},{_tc[2]},{_tc[3]}) w={_tc[4]}")
