@@ -42,6 +42,9 @@ Then paste the command above with your file path. Output is saved as `dashboard_
 **Input:** `.pbix` or `.pbip` source file
 **How it works:** Claude connects to the live Power BI Desktop model via MCP and queries exact values using DAX
 
+> **Prefer `.pbip` over `.pbix` when you have the choice.**
+> PBIP stores the semantic model as plain-text TMDL files, so Claude can read every measure's DAX expression and understand exactly how each KPI is calculated. Modern `.pbix` files store the model as compressed binary — Claude gets the right numbers from DAX queries but has no visibility into the calculation logic behind them. To save as PBIP: in Power BI Desktop, `File → Save as` and choose the Power BI Project format.
+
 ### Step 1: Install the MCP server (one-time)
 
 From inside the repo with Claude Code running:
