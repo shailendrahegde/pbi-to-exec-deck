@@ -4,35 +4,24 @@
 
 Turn Power BI dashboards into polished, insight-driven presentations automatically. No design skills, no manual slide-building, no copy-pasting numbers.
 
-Two modes depending on how much access you have to the source data:
+---
 
-| | Quick Mode | Deep Analysis Mode |
-|---|---|---|
-| **Input** | PDF or PPTX export | `.pbix` or `.pbip` file |
-| **Data source** | Dashboard screenshots | Live Power BI model via MCP |
-| **Insight quality** | Visual analysis | Exact DAX-verified numbers |
-| **Setup** | Claude Code only | Claude Code + MCP server |
-| **Time** | ~3 minutes | ~5–10 minutes |
+## Prerequisite
+
+**[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview)** — required for both modes. Python and all other dependencies are auto-installed on first run.
 
 ---
 
-## Mode 1 — Quick Mode (PDF or PPTX)
+## Mode 1 — Quick Mode
 
-Export your dashboard from Power BI and feed it directly. Claude reads each page as an image and generates analyst-grade insights.
+**Input:** PDF or PPTX export from Power BI
+**How it works:** Claude reads each dashboard page as an image and generates analyst-grade insights
 
-### Prerequisites
+```
+convert to an executive deck "C:\path\to\dashboard.pdf"
+```
 
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview) — the only requirement. Python and dependencies are auto-installed on first run.
-
-### Step 1: Export your dashboard from Power BI
-
-**PDF** — Power BI Desktop: `File → Export → Export to PDF`
-
-**PPTX** — Power BI Service: `File → Export → PowerPoint`
-
-Both formats work identically.
-
-### Step 2: Clone the repo and open Claude Code
+**Get started:**
 
 ```bash
 git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
@@ -40,114 +29,63 @@ cd pbi-to-exec-deck
 claude
 ```
 
-### Step 3: Run the conversion
+Then paste the command above with your file path. Output is saved as `dashboard_executive.pptx` (~3 minutes).
 
-```
-convert to an executive deck "C:\path\to\your\dashboard.pdf"
-```
-
-Your presentation is saved as `dashboard_executive.pptx` in the project folder (~3 minutes).
-
-**What Claude does automatically:**
-- Extracts each dashboard page as an image
-- Reads KPIs, trends, tables, and comparisons as a senior analyst
-- Generates insight-driven headlines with specific numbers
-- Builds an executive summary and action recommendations
-- Renders clean 16:9 slides with SVG charts
+**How to export from Power BI:**
+- **PDF** — Power BI Desktop: `File → Export → Export to PDF`
+- **PPTX** — Power BI Service: `File → Export → PowerPoint`
 
 ---
 
-## Mode 2 — Deep Analysis Mode (PBIX or PBIP)
+## Mode 2 — Deep Analysis Mode
 
-Feed the Power BI source file directly. Claude connects to the live data model via MCP and queries exact values using DAX — no visual estimation.
+**Input:** `.pbix` or `.pbip` source file
+**How it works:** Claude connects to the live Power BI Desktop model via MCP and queries exact values using DAX
 
-**Why this mode is more powerful:**
-- KPIs and measures are queried via DAX against the live model — exact values, not visual estimates
-- Measure logic is transparent (Claude reads the DAX expressions to understand how each KPI is calculated)
-- Can drill into any dimension, filter, or time period beyond what's visible on screen
-- When Power BI Desktop is not running, falls back to static screenshots embedded in the file
-
-### Prerequisites
-
-**1. Claude Code CLI**
-
-Install from [claude.ai/code](https://claude.ai/code) or:
-```bash
-npm install -g @anthropic-ai/claude-code
+```
+convert to an executive deck "C:\path\to\report.pbix"
 ```
 
-**2. Power BI Desktop**
+```
+convert to an executive deck "C:\path\to\report.pbip"
+```
 
-Download from the [Microsoft Store](https://apps.microsoft.com/store/detail/power-bi-desktop/9NTXR16HNW1T) or the Power BI download page. Must be installed on Windows.
-
-**3. Power BI Modeling MCP Server**
-
-This MCP server lets Claude query your live Power BI Desktop model via DAX. Install it by running the included setup script:
+**Extra prerequisite:** Install the Power BI Modeling MCP server (one-time setup)
 
 ```bash
 python setup_pbi_mcp.py
 ```
 
-The script will:
-- Check if the MCP executable is already present (e.g. from a prior install)
-- Download the server package directly from VS Marketplace if not found
-- Extract it to `C:\MCPServers\PowerBIModelingMCP\` and register it in `.mcp.json`
+This downloads the official [microsoft/powerbi-modeling-mcp](https://github.com/microsoft/powerbi-modeling-mcp) server, extracts it to `C:\MCPServers\PowerBIModelingMCP\`, and registers it in `.mcp.json`. To verify:
 
-To verify the setup:
 ```bash
 python setup_pbi_mcp.py --check
 ```
 
-> **Note:** The MCP server is the official Microsoft release at [microsoft/powerbi-modeling-mcp](https://github.com/microsoft/powerbi-modeling-mcp). Microsoft distributes it as a VSIX package (no GitHub releases); the setup script downloads it directly from VS Marketplace following Microsoft's own instructions for non-VS Code MCP clients. It runs locally and communicates with Power BI Desktop on your machine — no data leaves your environment.
+**Before running:** Open your report in Power BI Desktop — the MCP connects to the running Desktop process to query the live model.
 
-### Step 1: Open your report in Power BI Desktop
+**Without MCP installed:** The tool still runs but falls back to image-only analysis (same as Mode 1). You'll see a clear message indicating this.
 
-Power BI Desktop must be **running with the report open** before you run the conversion. The MCP server connects to the in-memory model.
-
-### Step 2: Clone the repo and open Claude Code
-
-```bash
-git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
-cd pbi-to-exec-deck
-claude
-```
-
-### Step 3: Run the conversion
-
-With a `.pbix` file:
-```
-convert to an executive deck "C:\path\to\your\report.pbix"
-```
-
-With a `.pbip` project folder:
-```
-convert to an executive deck "C:\path\to\your\report.pbip"
-```
-
-### Step 4: Done
-
-Your presentation is saved as `report_executive.pptx`.
-
-**What Claude does automatically:**
-- Extracts report page structure and visual definitions from the file
-- Reads every measure's DAX expression to understand how each KPI is calculated
-- Executes DAX queries against the live model for exact values (requires Power BI Desktop open)
-- Uses screenshots for visual context, chart type detection, and as fallback when Desktop isn't running
-- Generates insights grounded in DAX-verified numbers wherever possible
-- Renders clean 16:9 slides with SVG charts matching the original visual types
+> The MCP server runs locally and communicates only with Power BI Desktop on your machine — no data leaves your environment.
 
 ---
 
-## Output
+## What you get
 
-Both modes produce the same presentation format:
+Both modes produce the same output format:
 
-- **16:9 widescreen** slides (1920×1080)
-- **SVG charts** rendered from extracted data — bar, line, donut, heatmap, treemap, scatter, KPI cards, tables, and more
+- **16:9 widescreen** slides
+- **SVG charts** matching the original visual types — bar, line, donut, heatmap, treemap, scatter, KPI cards, tables
 - **Insight-driven headlines** that answer "so what?" for each dashboard page
 - **Executive summary** — 5 synthesized findings across all pages
 - **Action recommendations** — specific, data-grounded next steps
-- **Analytics template styling** — clean, professional, blue accent
+
+| | Mode 1 (PDF/PPTX) | Mode 2 (PBIX/PBIP) |
+|---|---|---|
+| Data source | Screenshots | Live DAX queries |
+| Numbers | Visually read | Exact from model |
+| Measure logic | Unknown | Full DAX expressions |
+| Extra setup | None | MCP server |
 
 ---
 
@@ -161,27 +99,15 @@ Both modes produce the same presentation format:
 
 ---
 
-## What Makes This Different
-
-| | This tool | Manual approach |
-|---|---|---|
-| Insight quality | Analyst-grade, data-grounded | Varies by author |
-| Time | 3–10 minutes | Hours |
-| Numbers | Exact (DAX) or verified (visual) | Copy-paste error risk |
-| Charts | SVG rendered from data | Screenshot embeds |
-| Consistency | Templated, constitutionally validated | Inconsistent |
-
----
-
 ## Key Files
 
 | File | Purpose |
 |---|---|
 | `convert_dashboard_claude.py` | Main entry point for all conversions |
-| `setup_pbi_mcp.py` | One-time MCP server setup for PBIX/PBIP mode |
-| `lib/extraction/pbix_extractor.py` | PBIX ZIP extraction and static screenshot handling |
+| `setup_pbi_mcp.py` | One-time MCP server setup for Mode 2 |
+| `lib/extraction/pbix_extractor.py` | PBIX ZIP extraction and screenshot handling |
 | `lib/extraction/pbip_extractor.py` | PBIP folder parsing and DAX query generation |
-| `lib/rendering/chart_builder_mpl.py` | SVG chart rendering (matplotlib) |
+| `lib/rendering/chart_builder_mpl.py` | SVG chart rendering |
 | `lib/rendering/builder.py` | Slide layout and PPTX assembly |
 | `CLAUDE.md` | Full instructions for Claude's analysis workflow |
 
