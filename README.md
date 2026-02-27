@@ -89,9 +89,9 @@ python setup_pbi_mcp.py
 ```
 
 The script will:
-- Detect if the MCP server is already installed (via VS Code extension)
-- Download and configure it automatically if not found
-- Register it in `.mcp.json` so Claude Code picks it up
+- Check if the MCP executable is already present (e.g. from a prior install)
+- Download the server package directly from VS Marketplace if not found
+- Extract it to `C:\MCPServers\PowerBIModelingMCP\` and register it in `.mcp.json`
 
 To verify the setup:
 ```bash

@@ -16,8 +16,6 @@ Usage:
 import argparse
 import json
 import os
-import shutil
-import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -78,26 +76,7 @@ def read_mcp_json_config() -> "tuple[bool, Path | None]":
     return False, None
 
 
-def vscode_cli_available() -> bool:
-    return shutil.which("code") is not None
-
-
 # ─── 2. Installation ──────────────────────────────────────────────────────────
-def install_via_vscode_cli() -> "Path | None":
-    """Install the extension with `code --install-extension`. Returns exe path."""
-    ext_id = f"{MCP_PUBLISHER}.{MCP_EXTENSION}"
-    _step(f"Installing via VS Code CLI:  code --install-extension {ext_id}")
-    result = subprocess.run(
-        ["code", "--install-extension", ext_id],
-        capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        _fail(f"VS Code install failed: {result.stderr.strip()}")
-        return None
-    _ok("Extension installed")
-    return find_installed_exe()
-
-
 def _fetch_latest_version() -> str:
     """Query VS Marketplace REST API for the latest extension version."""
     import urllib.request
@@ -271,7 +250,6 @@ def main():
     _step("Current status")
     print(f"    .mcp.json configured  : {'YES — ' + str(cfg_exe) if configured else 'NO'}")
     print(f"    MCP exe on disk       : {existing_exe or 'NOT FOUND'}")
-    print(f"    VS Code CLI available : {'YES' if vscode_cli_available() else 'NO'}")
 
     if args.check:
         print()
@@ -298,15 +276,8 @@ def main():
         return 0
 
     # ── Need to install ───────────────────────────────────────────────────────
-    _step("MCP not found — installing now")
-    exe_path = None
-
-    if vscode_cli_available():
-        exe_path = install_via_vscode_cli()
-
-    if exe_path is None:
-        _warn("VS Code CLI unavailable or install failed — falling back to direct download")
-        exe_path = download_and_extract_vsix()
+    _step("MCP not found — downloading now")
+    exe_path = download_and_extract_vsix()
 
     if exe_path is None:
         _fail("Could not install automatically")
