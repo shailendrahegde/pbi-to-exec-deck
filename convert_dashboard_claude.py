@@ -244,19 +244,20 @@ def prepare_for_claude_analysis(source_path):
     return request_file
 
 
-def show_claude_instructions(request_file):
+def show_claude_instructions(request_file, context=None):
     """Show instructions for Claude to generate insights (manual mode)"""
 
     print("\n" + "=" * 70)
     print("NEXT STEP: CLAUDE GENERATES INSIGHTS")
     print("=" * 70)
 
+    context_line = f'\n    Focus: {context}' if context else ''
     print(f"""
 Claude will now analyze each dashboard image and generate insights.
 
 Please say to Claude Code:
 
-    "Analyze the dashboards in {request_file} and generate analyst-grade insights.
+    "Analyze the dashboards in {request_file} and generate analyst-grade insights.{context_line}
     Save results to temp/claude_insights.json"
 
 After Claude completes, run:
@@ -264,7 +265,7 @@ After Claude completes, run:
 """)
 
 
-def trigger_claude_analysis(request_file):
+def trigger_claude_analysis(request_file, context=None):
     """Trigger Claude Code to analyze dashboards (automatic mode)"""
 
     print("\n" + "=" * 70)
@@ -278,14 +279,14 @@ def trigger_claude_analysis(request_file):
     is_pbip = request.get('source_type') in ('pbip', 'pbix') or Path('temp/pbip_context.json').exists()
 
     if is_pbip and _is_mcp_ready():
-        _trigger_pbip_analysis(request)
+        _trigger_pbip_analysis(request, context=context)
     elif is_pbip and not _is_mcp_ready():
-        _trigger_image_analysis(request, mcp_missing=True)
+        _trigger_image_analysis(request, mcp_missing=True, context=context)
     else:
-        _trigger_image_analysis(request)
+        _trigger_image_analysis(request, context=context)
 
 
-def _trigger_image_analysis(request, mcp_missing=False):
+def _trigger_image_analysis(request, mcp_missing=False, context=None):
     """Show image-based analysis instructions (PPTX / PDF path, or PBIX/PBIP without MCP)."""
     if mcp_missing:
         print("\n" + "!" * 70)
@@ -297,6 +298,14 @@ def _trigger_image_analysis(request, mcp_missing=False):
         print("!!")
         print("!! To enable exact DAX values: python setup_pbi_mcp.py")
         print("!" * 70 + "\n")
+
+    if context:
+        print("=" * 70)
+        print("ANALYSIS FOCUS (from --context):")
+        print(f"  {context}")
+        print("=" * 70 + "\n")
+        print("Apply the above focus throughout your analysis — prioritise insights,")
+        print("DAX queries, and recommendations that directly address it.\n")
 
     print(f"\nClaude Code: Please analyze these {request['total_slides']} dashboard images.\n")
 
@@ -461,11 +470,19 @@ Output format:
     print("-" * 70)
 
 
-def _trigger_pbip_analysis(request):
+def _trigger_pbip_analysis(request, context=None):
     """Show PBIP / MCP-based analysis instructions."""
     total = request['total_slides']
     print(f"\nClaude Code: Please analyze this Power BI report ({total} pages) "
           f"using the live model via MCP.\n")
+
+    if context:
+        print("=" * 70)
+        print("ANALYSIS FOCUS (from --context):")
+        print(f"  {context}")
+        print("=" * 70 + "\n")
+        print("Apply the above focus throughout your analysis — prioritise insights,")
+        print("DAX queries, and recommendations that directly address it.\n")
 
     print("Pages to analyze:")
     for slide in request['slides']:
@@ -740,6 +757,8 @@ Examples:
                        help='Path to Claude insights JSON (default: temp/claude_insights.json)')
     parser.add_argument('--auto', action='store_true',
                        help='Auto mode: skip interactive prompt (for non-interactive environments)')
+    parser.add_argument('--context', default=None,
+                       help='Optional analysis focus injected into the prompt, e.g. "spotlight Group A"')
 
     args = parser.parse_args()
 
@@ -766,7 +785,7 @@ Examples:
         request_file = prepare_for_claude_analysis(args.source)
 
         # STEP 2: Trigger Claude analysis
-        trigger_claude_analysis(request_file)
+        trigger_claude_analysis(request_file, context=args.context)
 
         # Wait for Claude to generate insights
         # Auto-detect non-interactive environments and poll for insights file
@@ -819,7 +838,7 @@ Examples:
             return 1
 
         request_file = prepare_for_claude_analysis(args.source)
-        show_claude_instructions(request_file)
+        show_claude_instructions(request_file, context=args.context)
 
     elif args.build:
         # Step 3: Build final presentation
