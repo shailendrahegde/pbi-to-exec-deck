@@ -103,14 +103,14 @@ def detect_file_type(file_path):
         )
 
 
-def _check_pbi_mcp_setup():
+def _check_pbi_mcp_setup() -> bool:
     """
     Warn clearly if the Power BI Modeling MCP is not installed/configured.
-    Does NOT block execution — PBIP analysis can still fall back to screenshots.
+    Returns True if MCP is ready for DAX queries, False otherwise.
+    Does NOT block execution.
     """
     mcp_json = Path(".mcp.json")
 
-    # Check .mcp.json for a powerbi-modeling entry
     configured = False
     exe_valid  = False
     if mcp_json.exists():
@@ -125,21 +125,20 @@ def _check_pbi_mcp_setup():
 
     if configured and exe_valid:
         print("  OK Power BI Modeling MCP configured — DAX query mode enabled")
-        return
+        return True
 
     print()
     print("  " + "!" * 66)
     if not configured:
-        print("  !! Power BI Modeling MCP is NOT configured")
+        print("  !! Power BI Modeling MCP is NOT installed")
         print("  !!")
-        print("  !! Without it, Claude will analyse screenshots only (lower accuracy).")
-        print("  !! For exact DAX values, run the setup script first:")
+        print("  !! No live DAX queries will run. Claude will use screenshots only.")
+        print("  !! To enable exact DAX values, install the MCP first:")
         print("  !!")
         print("  !!     python setup_pbi_mcp.py")
         print("  !!")
         print("  !! Then restart Claude Code and re-run this command.")
     else:
-        # Configured but exe missing (moved/deleted)
         print("  !! Power BI MCP is configured in .mcp.json but the executable")
         print("  !! was not found at the registered path.")
         print("  !! Re-run the setup script to fix the path:")
@@ -147,8 +146,24 @@ def _check_pbi_mcp_setup():
         print("  !!     python setup_pbi_mcp.py --force")
     print("  " + "!" * 66)
     print()
-    print("  Continuing with screenshot-based analysis as fallback...")
+    print("  MCP not available — falling back to image-only analysis.")
     print()
+    return False
+
+
+def _is_mcp_ready() -> bool:
+    """Silent MCP check — returns True/False without printing anything."""
+    mcp_json = Path(".mcp.json")
+    if not mcp_json.exists():
+        return False
+    try:
+        cfg    = json.loads(mcp_json.read_text(encoding="utf-8"))
+        server = cfg.get("mcpServers", {}).get("powerbi-modeling")
+        if server and Path(server.get("command", "")).exists():
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def prepare_for_claude_analysis(source_path):
@@ -260,16 +275,29 @@ def trigger_claude_analysis(request_file):
     with open(request_file, 'r', encoding='utf-8') as f:
         request = json.load(f)
 
-    is_pbip = request.get('source_type') == 'pbip' or Path('temp/pbip_context.json').exists()
+    is_pbip = request.get('source_type') in ('pbip', 'pbix') or Path('temp/pbip_context.json').exists()
 
-    if is_pbip:
+    if is_pbip and _is_mcp_ready():
         _trigger_pbip_analysis(request)
+    elif is_pbip and not _is_mcp_ready():
+        _trigger_image_analysis(request, mcp_missing=True)
     else:
         _trigger_image_analysis(request)
 
 
-def _trigger_image_analysis(request):
-    """Show image-based analysis instructions (PPTX / PDF path)."""
+def _trigger_image_analysis(request, mcp_missing=False):
+    """Show image-based analysis instructions (PPTX / PDF path, or PBIX/PBIP without MCP)."""
+    if mcp_missing:
+        print("\n" + "!" * 70)
+        print("!! NO MCP INSTALLED — RUNNING IN IMAGE-ONLY MODE")
+        print("!!")
+        print("!! The Power BI Modeling MCP is not installed, so no live DAX")
+        print("!! queries will run. Claude will read dashboard screenshots only.")
+        print("!! Numbers will be read visually — not queried from the live model.")
+        print("!!")
+        print("!! To enable exact DAX values: python setup_pbi_mcp.py")
+        print("!" * 70 + "\n")
+
     print(f"\nClaude Code: Please analyze these {request['total_slides']} dashboard images.\n")
 
     print("For each slide:")
