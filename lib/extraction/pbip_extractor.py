@@ -1039,29 +1039,50 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
         # Use wb-relative bounds so the search works regardless of screen resolution.
         _tab_strip  = None
         _best_width = 0
-        _best_named = 0   # count of named TabItem children — primary selection criterion
+        _best_total = 0   # total TabItem children — tie-break after width filter
         _tab_candidates = []
+
+        # Step A: ensure PBI Desktop is showing the Report view canvas.
+        # The left view-switcher rail is a narrow Tab (~41px wide) with 5 items:
+        # Report / Data / Model / DAX query / TMDL.  Selecting item[0] switches
+        # to Report view so the page tab strip is visible and the canvas is correct.
+        try:
+            for _ctrl in _pbi_win.descendants(control_type='Tab'):
+                _r = _ctrl.rectangle()
+                if (_r.right - _r.left) < 60:        # left nav rail only
+                    _vtabs = _ctrl.children(control_type='TabItem')
+                    if _vtabs:
+                        _vtabs[0].select()            # Report view = first item
+                        _time.sleep(0.8)
+                        print("  Ensured Report view is active")
+                        break
+        except Exception:
+            pass   # non-critical; navigation proceeds regardless
+
+        # Step B: find the bottom page tab strip.
+        # Primary criterion: WIDTH.  The bottom strip spans nearly the full window
+        # width (~1440px); the left nav rail is only ~41px.  Reject anything < 200px.
+        # Among wide controls, prefer the one with more TabItem children (page count).
         for _ctrl in _pbi_win.descendants(control_type='Tab'):
             _r  = _ctrl.rectangle()
             _rw = _r.right - _r.left
             _tab_candidates.append((_r.left, _r.top, _r.right, _r.bottom, _rw))
 
-            # Strategy 1 (preferred): Tab with the most named TabItem children.
-            # This works even when PBI Desktop reports tab coordinates in WPF
-            # logical pixels (DPI-scaled) that don't match screen coordinates.
+            if _rw < 200:       # left/right navigation rails — skip
+                continue
+
             try:
-                _children = _ctrl.children(control_type='TabItem')
-                _named = sum(1 for _c in _children if _c.window_text().strip())
+                _total = len(_ctrl.children(control_type='TabItem'))
             except Exception:
-                _named = 0
-            if _named > _best_named or (_named == _best_named and _rw > _best_width):
+                _total = 0
+
+            if _total > _best_total or (_total == _best_total and _rw > _best_width):
                 _tab_strip  = _ctrl
                 _best_width = _rw
-                _best_named = _named
+                _best_total = _total
 
-        # Strategy 2 fallback: position-based (original logic) if no named children found
-        if _best_named == 0:
-            _tab_strip = None
+        # Fallback: position-based if no wide Tab found (e.g. unusual DPI scaling)
+        if _tab_strip is None:
             _best_width = 0
             for _ctrl in _pbi_win.descendants(control_type='Tab'):
                 _r  = _ctrl.rectangle()
@@ -1135,6 +1156,35 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
                 _time.sleep(2.0)
                 curr_img  = _grab_canvas()
                 curr_hash = _hash_img(curr_img)
+
+            # Gray-screen guard: detect if PBI Desktop drifted into an editor view
+            # (TMDL / DAX / Data / Model view).  Editor backgrounds are a very uniform
+            # mid-gray (~229,229,229).  Sample the centre quarter of the canvas;
+            # if mean ≥ 210 AND std < 20, the canvas is almost certainly not a dashboard.
+            try:
+                import numpy as _np
+                _cw, _ch = curr_img.size
+                _region = curr_img.crop((_cw//4, _ch//4, 3*_cw//4, 3*_ch//4))
+                _arr    = _np.array(_region.convert('L'), dtype=float)
+                if _arr.mean() >= 210 and _arr.std() < 20:
+                    print(f"    [{slide_num}/{n}] editor view detected — resetting to Report view")
+                    try:
+                        for _vc in _pbi_win.descendants(control_type='Tab'):
+                            if (_vc.rectangle().right - _vc.rectangle().left) < 60:
+                                _vt = _vc.children(control_type='TabItem')
+                                if _vt:
+                                    _vt[0].select()
+                                    _time.sleep(1.2)
+                                    break
+                    except Exception:
+                        pass
+                    if _ti < n_tabs:
+                        _page_tabs[_ti].select()
+                        _time.sleep(1.5)
+                    curr_img  = _grab_canvas()
+                    curr_hash = _hash_img(curr_img)
+            except Exception:
+                pass   # numpy unavailable or other error — skip guard
 
             curr_img.save(output_path)
             image_map[slide_num] = output_path
