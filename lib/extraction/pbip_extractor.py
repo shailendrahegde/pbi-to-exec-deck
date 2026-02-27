@@ -1043,16 +1043,20 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
         _tab_candidates = []
 
         # Step A: ensure PBI Desktop is showing the Report view canvas.
-        # The left view-switcher rail is a narrow Tab (~41px wide) with 5 items:
-        # Report / Data / Model / DAX query / TMDL.  Selecting item[0] switches
-        # to Report view so the page tab strip is visible and the canvas is correct.
+        # The left view-switcher rail is a VERTICAL Tab with items stacked top-to-bottom
+        # (Report / Data / Model / DAX / TMDL).  Its height >> its width (~41px wide,
+        # ~800px tall).  We detect it by aspect ratio and select item[0] = Report view.
+        # NOTE: do NOT match by width < 60 alone — some ribbon groups are also narrow.
         try:
             for _ctrl in _pbi_win.descendants(control_type='Tab'):
-                _r = _ctrl.rectangle()
-                if (_r.right - _r.left) < 60:        # left nav rail only
+                _r  = _ctrl.rectangle()
+                _rw = _r.right  - _r.left
+                _rh = _r.bottom - _r.top
+                # Left nav rail: taller than it is wide, anchored at left edge, < 100px wide
+                if _rw < 100 and _rh > _rw * 3 and _r.left < (wl + 100):
                     _vtabs = _ctrl.children(control_type='TabItem')
                     if _vtabs:
-                        _vtabs[0].select()            # Report view = first item
+                        _vtabs[0].select()   # Report view = first item
                         _time.sleep(0.8)
                         print("  Ensured Report view is active")
                         break
@@ -1060,15 +1064,19 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
             pass   # non-critical; navigation proceeds regardless
 
         # Step B: find the bottom page tab strip.
-        # Primary criterion: WIDTH.  The bottom strip spans nearly the full window
-        # width (~1440px); the left nav rail is only ~41px.  Reject anything < 200px.
-        # Among wide controls, prefer the one with more TabItem children (page count).
+        # Two hard constraints that uniquely identify it:
+        #   1. TOP is in the bottom 20% of the window (near wb) — excludes ribbon tabs
+        #   2. WIDTH > 500px — excludes left/right navigation rails
+        # Among controls that pass both, prefer the one with the most TabItem children.
+        _bottom_zone = wt + int((wb - wt) * 0.80)   # top 80% of window = ribbon area
         for _ctrl in _pbi_win.descendants(control_type='Tab'):
             _r  = _ctrl.rectangle()
             _rw = _r.right - _r.left
             _tab_candidates.append((_r.left, _r.top, _r.right, _r.bottom, _rw))
 
-            if _rw < 200:       # left/right navigation rails — skip
+            if _rw < 500:           # too narrow — not the full-width page strip
+                continue
+            if _r.top < _bottom_zone:  # in the top 80% — ribbon/toolbar, not page tabs
                 continue
 
             try:
@@ -1081,7 +1089,23 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
                 _best_width = _rw
                 _best_total = _total
 
-        # Fallback: position-based if no wide Tab found (e.g. unusual DPI scaling)
+        # Fallback A: relax the width to 200px (unusual DPI or small window)
+        if _tab_strip is None:
+            for _ctrl in _pbi_win.descendants(control_type='Tab'):
+                _r  = _ctrl.rectangle()
+                _rw = _r.right - _r.left
+                if _rw < 200 or _r.top < _bottom_zone:
+                    continue
+                try:
+                    _total = len(_ctrl.children(control_type='TabItem'))
+                except Exception:
+                    _total = 0
+                if _total > _best_total or (_total == _best_total and _rw > _best_width):
+                    _tab_strip  = _ctrl
+                    _best_width = _rw
+                    _best_total = _total
+
+        # Fallback B: original position-only heuristic (wb-relative, any width)
         if _tab_strip is None:
             _best_width = 0
             for _ctrl in _pbi_win.descendants(control_type='Tab'):
