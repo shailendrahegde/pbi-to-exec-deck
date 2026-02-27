@@ -42,15 +42,9 @@ Then paste the command above with your file path. Output is saved as `dashboard_
 **Input:** `.pbix` or `.pbip` source file
 **How it works:** Claude connects to the live Power BI Desktop model via MCP and queries exact values using DAX
 
-```
-convert to an executive deck "C:\path\to\report.pbix"
-```
+### Step 1: Install the MCP server (one-time)
 
-```
-convert to an executive deck "C:\path\to\report.pbip"
-```
-
-**Extra prerequisite:** Install the Power BI Modeling MCP server (one-time setup)
+From inside the repo with Claude Code running:
 
 ```bash
 python setup_pbi_mcp.py
@@ -62,11 +56,32 @@ This downloads the official [microsoft/powerbi-modeling-mcp](https://github.com/
 python setup_pbi_mcp.py --check
 ```
 
-**Before running:** Open your report in Power BI Desktop — the MCP connects to the running Desktop process to query the live model.
+> The MCP server runs locally and communicates only with Power BI Desktop on your machine — no data leaves your environment.
+
+### Step 2: Restart Claude Code
+
+Claude Code only picks up newly registered MCP servers on startup. Exit and relaunch:
+
+```bash
+/exit
+claude
+```
+
+### Step 3: Open your report in Power BI Desktop
+
+The MCP connects to the running Desktop process to query the live model. **Power BI Desktop must be open with your report loaded before you run the conversion.**
+
+### Step 4: Run the conversion
+
+```
+convert to an executive deck "C:\path\to\report.pbix"
+```
+
+```
+convert to an executive deck "C:\path\to\report.pbip"
+```
 
 **Without MCP installed:** The tool still runs but falls back to image-only analysis (same as Mode 1). You'll see a clear message indicating this.
-
-> The MCP server runs locally and communicates only with Power BI Desktop on your machine — no data leaves your environment.
 
 ---
 
