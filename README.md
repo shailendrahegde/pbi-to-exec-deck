@@ -46,15 +46,7 @@ claude
 convert to an executive deck "C:\path\to\your\dashboard.pdf"
 ```
 
-Or with a PPTX export:
-
-```
-convert to an executive deck "C:\path\to\your\dashboard.pptx"
-```
-
-### Step 4: Done
-
-Your presentation is saved as `dashboard_executive.pptx` in the project folder.
+Your presentation is saved as `dashboard_executive.pptx` in the project folder (~3 minutes).
 
 **What Claude does automatically:**
 - Extracts each dashboard page as an image
