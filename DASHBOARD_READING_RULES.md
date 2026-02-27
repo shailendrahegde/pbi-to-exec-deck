@@ -214,6 +214,91 @@
 
 ---
 
+---
+
+### Rule 14: Table and Matrix Visuals MUST Stay as Tables
+
+**Problem:** Converting a Power BI Table or Matrix visual into a bar chart — destroying row/column structure and making data unverifiable.
+
+**Rule:**
+- If the source visual is a table, matrix, or pivot table, the ChartSpec type **MUST** be `"table"`
+- **Never** convert a table into a bar chart, column chart, or any other chart type
+- All columns and all rows must be preserved in `table_columns` / `table_rows`
+- This applies to both PBIP (check `visual.type` in pbip_context.json) and image-based sources (look for grid/cell structure)
+
+**How to identify a table visual in an image:**
+- Has visible row dividers and column headers
+- Each row is a separate entity (user, team, department) with multiple attributes
+- Data is tabular, not a single measure per entity
+
+**Validation:**
+- ✅ Table visual → `{"type": "table", "table_columns": [...], "table_rows": [...]}`
+- ❌ Table visual → `{"type": "bar", "data": [...]}` ← this is **NEVER** acceptable
+
+---
+
+### Rule 15: PBIP — DAX Result is the Authoritative Number
+
+**Problem:** Insight states 87% but the DAX query returns 89% (or visual shows 89%). The discrepancy reaches an executive.
+
+**Rule:**
+- When PBIP context is available, **execute the DAX query** for every number you plan to cite
+- The returned DAX value is the source of truth — use it verbatim
+- If the visual and DAX disagree, use DAX and note the discrepancy internally
+- Do NOT estimate from the visual when DAX data is available
+
+**Verification workflow:**
+1. Identify the measure name from the visual's field binding
+2. Execute: `EVALUATE ROW("Value", [MeasureName])`
+3. Use the returned value — not your visual read, not your memory
+
+**Validation:**
+- ✅ DAX returns 89.2% → insight says "89% adoption rate"
+- ❌ Visual looks like ~87% → insight says "87%" without executing DAX query
+
+---
+
+### Rule 16: PBIP — Metric Labels Must Match DAX Formula Context AND Page Filter Context
+
+**Problem:** Insight says "sessions per user per week" but the DAX measure computes sessions per user over the selected time period (which is 3 months, not a week).
+
+**Two sources of context — read BOTH before labelling a metric:**
+
+**Source A: The DAX formula**
+- Only add a time unit (day/week/month) if it is explicit in the DAX expression
+- `DIVIDE([Sessions], [Users])` → "sessions per user" (**stop there — no time unit**)
+- `DIVIDE([Sessions], [Users * Weeks])` → "sessions per user per week" (week is in formula)
+- `CALCULATE([Metric], DATESINPERIOD(..., -30, DAY))` → "over the last 30 days" (baked into formula)
+
+**Source B: The page / visual filter context (slicers, page filters, visual filters)**
+- Check `pbip_context.json` → `pages[n].filters` and `pages[n].visuals[m].filters` for active filter values
+- A date slicer set to "Mar–Jun 2025" means the measure evaluates over that 4-month window
+- A slicer set to "Last 7 Days" means the measure evaluates over 7 days
+- The filter period tells you the **scope** of the metric, not an additional divisor
+
+**How to combine both sources:**
+
+| DAX formula | Active page filter | Correct label |
+|---|---|---|
+| `DIVIDE([Sessions],[Users])` | Date slicer: Mar–Jun 2025 | "sessions per user (Mar–Jun 2025)" |
+| `DIVIDE([Sessions],[Users])` | Date slicer: Last 7 days | "sessions per user (last 7 days)" |
+| `DIVIDE([Sessions],[Users])` | No date filter | "sessions per user (selected period)" |
+| `DIVIDE([Sessions],[Users*Weeks])` | Any filter | "sessions per user per week" |
+| `CALCULATE([M], DATESINPERIOD(...,-7,DAY))` | Any filter | "over the last 7 days" (formula defines it) |
+
+**Test before writing the label:**
+1. Does the DAX formula divide by a time unit? → If yes, include it. If no, do NOT add one.
+2. Is there an active date/period filter on the page or visual? → If yes, append the period as scope context in parentheses.
+3. Never invent a time unit that appears in neither the formula nor the active filters.
+
+**Validation:**
+- ✅ `DIVIDE([Sessions],[Users])` + slicer "Mar–Jun" → "2.4 sessions per user (Mar–Jun 2025)"
+- ❌ `DIVIDE([Sessions],[Users])` + slicer "Mar–Jun" → "2.4 sessions per user per week" ← week invented
+- ✅ `DIVIDE([Sessions],[Users*Weeks])` → "0.6 sessions per user per week"
+- ❌ `DIVIDE([Sessions],[Users])` + no filter → "sessions per user per week" ← fabricated
+
+---
+
 ## Pre-Analysis Checklist
 
 Before generating insights for a dashboard page:
@@ -225,6 +310,9 @@ Before generating insights for a dashboard page:
 5. [ ] Verify units are consistent (K, M, %, etc.)
 6. [ ] Match each number to its exact label
 7. [ ] Don't assume first row = total without reading label
+8. [ ] **Visual type check**: Is this a Table or Matrix? → ChartSpec type MUST be `"table"` (Rule 14)
+9. [ ] **PBIP only**: Execute DAX query for every number before citing it (Rule 15)
+10. [ ] **PBIP only**: Read DAX formula before labeling the metric — no time units unless in the formula (Rule 16)
 
 ---
 

@@ -9,7 +9,8 @@ This project converts Power BI dashboard exports (.pptx or .pdf) into executive-
 **Supported Input Formats:**
 - PowerPoint (.pptx) - Exported from Power BI
 - PDF (.pdf) - Exported from Power BI
-- **Note:** Both formats produce identical output quality (16:9 PPTX)
+- Power BI Project (.pbip) - Live model access via powerbi-modeling MCP
+- **Note:** All formats produce identical output quality (16:9 PPTX)
 
 ## Core Philosophy
 
@@ -99,8 +100,165 @@ Read temp/slide_2.png
 - Format: "[Action verb] + [what to do] + [expected outcome]"
 - Be specific: "Pilot agent training with HR Generalists (140 actions/user) to establish best practices" NOT "Improve training"
 
+**Deck Title & Subtitle:**
+Generate a compelling `deck_title` that captures the core story of the deck — the single most important narrative an executive should remember. It should be positively framed and attention-grabbing.
+
+Format: `"[Evocative phrase]: [Core finding or story]"`
+
+Examples of great deck titles:
+- "Copilot Impact Confirmed: $14.7M in Value with 84% Active Adoption"
+- "From Reach to Routine: Building AI Habits Across the Organization"
+- "Momentum Confirmed: Three Platforms, One Direction, Zero Plateau"
+
+The `deck_subtitle` describes scope: what platforms/products are covered, the company/org name if known, and the time period.
+
+Format: `"[Platform 1] · [Platform 2] · [Platform 3] · [Month Year] – [Month Year]"`
+
+Examples:
+- "Agents · Unlicensed Chat · M365 Copilot · Mar – Jun 2025"
+- "Microsoft 365 Copilot Impact Report · Apr–Oct 2025"
+
+## SVG Chart Rule (CRITICAL — applies to ALL source types)
+
+> **Always generate chart specs from extracted data. Never embed raw screenshots.**
+
+The builder has two rendering modes. You MUST use the chart mode:
+
+| Mode | Triggered when | Visual result |
+|---|---|---|
+| **Chart (SVG)** | Each `insight` object has a `"chart"` key | Polished rendered chart on the slide |
+| **Screenshot fallback** | Insights are plain strings with no `"chart"` key | Raw PBI screenshot pasted as-is |
+
+**Use chart mode for every slide where you can extract at least one data series.**
+Only fall back to plain-string mode (screenshot) if the slide has no quantitative data at all (e.g. a text-only guidance page or navigation slide).
+
+### How to extract chart data from a screenshot
+
+For every slide with a visible chart or table:
+1. Read the axis labels, legend items, and bar/line heights carefully
+2. Transcribe each series as `{"label": "...", "value": N}` entries
+3. Choose the appropriate chart type (see table below)
+4. Set `"title"` to a short label matching the dashboard chart title
+
+You do NOT need exact precision — reasonable visual estimates are fine. The goal is a clean rendered chart, not perfect numbers. If a bar reaches roughly 60% of the axis max, use that value.
+
+### Chart types supported
+
+| Dashboard visual | Use `type:` |
+|---|---|
+| Horizontal bars (manager leaderboard, ranked list) | `"bar"` |
+| Vertical columns (time series, category comparison) | `"column"` |
+| Line chart (trend over time) | `"line"` |
+| Donut / pie | `"donut"` |
+| KPI card (single big number) | `"kpi"` |
+| Multiple KPI cards in a row | `"kpi_row"` |
+| Data table / matrix | `"table"` |
+| Treemap | `"treemap"` |
+| Scatter / bubble | `"scatter"` |
+| Funnel | `"funnel"` |
+| Gauge | `"gauge"` |
+
+### Per-insight chart spec format
+
+Each insight bullet can optionally carry a chart. The first insight with a chart
+is rendered as the main chart for that slide. A second chart (if provided) appears
+in an expanded two-chart layout.
+
 ```json
 {
+  "text": "Bold punchy line || Supporting evidence with data",
+  "chart": {
+    "type": "bar",
+    "title": "Weekly Actions by Manager",
+    "data": [
+      {"label": "Dana Bourque", "value": 48.95},
+      {"label": "Matt Sheard",  "value": 38.09},
+      {"label": "Saurabh Pant", "value": 33.62},
+      {"label": "Jason Kim",    "value": 29.53}
+    ]
+  }
+}
+```
+
+For a KPI card:
+```json
+{
+  "text": "5.35 hours saved per person per week || ...",
+  "chart": {"type": "kpi", "value": "5.35", "label": "Assisted Hours/Week/Person"}
+}
+```
+
+For `kpi_row` (multiple KPI cards side-by-side):
+```json
+{
+  "chart": {
+    "type": "kpi_row",
+    "items": [
+      {"value": "256",   "label": "Active Users"},
+      {"value": "33.77", "label": "Weekly Actions"},
+      {"value": "52.6%", "label": "Power Users"},
+      {"value": "58.5%", "label": "Growth"}
+    ]
+  }
+}
+```
+
+For a table:
+```json
+{
+  "chart": {
+    "type": "table",
+    "columns": ["Manager", "Users", "Weekly Actions"],
+    "rows": [
+      ["Dana Bourque", "4", "48.95"],
+      ["Matt Sheard",  "52", "38.09"]
+    ]
+  }
+}
+```
+
+### Full slide insight format with charts
+
+```json
+{
+  "slide_number": 3,
+  "title": "Usage Trend",
+  "headline": "Dana Bourque team sets the intensity benchmark at 48.95 weekly actions",
+  "insights": [
+    {
+      "text": "Dana Bourque leads at 48.95 actions/user || Small focused cohort of 4 proving the Power User ceiling is reachable",
+      "chart": {
+        "type": "bar",
+        "title": "Weekly Actions by Manager",
+        "data": [
+          {"label": "Dana Bourque",  "value": 48.95},
+          {"label": "Matt Sheard",   "value": 38.09},
+          {"label": "Saurabh Pant",  "value": 33.62},
+          {"label": "Jason Kim",     "value": 29.53}
+        ]
+      }
+    },
+    {
+      "text": "30.76 avg weekly actions across the cohort || 3.44 active days/week and 2.54 apps signals multi-surface habit formation",
+      "chart": null
+    },
+    {
+      "text": "Jason Kim anchors 151 users at 29.53 || Largest group still above Power User threshold — strong org-wide floor",
+      "chart": null
+    }
+  ],
+  "numbers_used": ["48.95", "4", "38.09", "52", "33.62", "63", "29.53", "151"]
+}
+```
+
+When using charts, the `insights` field is a **list of objects** (each with `"text"` and `"chart"`), not plain strings.
+
+---
+
+```json
+{
+  "deck_title": "Compelling story-driven title",
+  "deck_subtitle": "Agents · Chat · M365 Copilot · Month Year – Month Year",
   "executive_summary": [
     "Finding with specific number → business implication",
     "Finding with specific number → business implication",
@@ -117,11 +275,14 @@ Read temp/slide_2.png
     {
       "slide_number": 1,
       "title": "Slide Title",
-      "headline": "[Number] + [Insight]",
+      "headline": "Insight-driven headline",
       "insights": [
-        "Punchy bold line under 8 words || Supporting evidence with specific data and business implication",
-        "Punchy bold line under 8 words || Pattern or opportunity identified with data",
-        "Punchy bold line under 8 words || Actionable recommendation with expected outcome"
+        {
+          "text": "Punchy bold line || Supporting evidence with specific data",
+          "chart": {"type": "bar", "title": "Chart Title", "data": [{"label": "A", "value": 42}]}
+        },
+        {"text": "Second insight || Detail", "chart": null},
+        {"text": "Third insight || Detail", "chart": null}
       ],
       "numbers_used": ["134", "1,275", "11%"]
     }
@@ -130,6 +291,148 @@ Read temp/slide_2.png
 ```
 
 **Save to:** `temp/claude_insights.json`
+
+---
+
+## PBIP Workflow (when source is a .pbip file)
+
+When a user has a `.pbip` Power BI project open in Power BI Desktop, this
+path queries the **live in-memory model** directly — no screenshots needed.
+
+```bash
+python convert_dashboard_claude.py --source "MyReport.pbip"
+```
+
+### What's different from the standard workflow
+
+| | Standard (PDF/PPTX) | PBIP |
+|---|---|---|
+| Data source | Claude reads images | Claude queries live model via MCP |
+| Accuracy | Visual estimation | Exact values from DAX |
+| Depth | What's visible on screen | Can query any dimension/filter |
+| Measure context | Unknown | Full DAX expression available |
+
+### When `temp/pbip_context.json` exists alongside `analysis_request.json`:
+
+**Step 1: Read the context file**
+```
+Read temp/pbip_context.json
+```
+This contains:
+- `pages` — report page structure with visual types and field bindings
+- `model.measures` — every measure with its full DAX expression
+- `model.tables` — table and column structure
+- `model.relationships` — table relationships
+- `dax_queries` — pre-built DAX queries, one group per page
+
+**Step 2: Execute DAX queries via the `powerbi-modeling` MCP**
+
+For each page in `dax_queries`, run the queries using the MCP tool:
+- The MCP connects to the running Power BI Desktop instance
+- The returned table rows are your data source — use exact values
+- State the measure name alongside the value for traceability
+
+Example MCP call pattern:
+```
+execute_query(database="...", dax="EVALUATE ROW(\"Total Revenue\", [Total Revenue])")
+```
+
+**Step 3: Drill deeper with custom DAX (optional)**
+
+Modify pre-built queries to apply filters or explore dimensions:
+```dax
+-- Filter to last 30 days
+EVALUATE
+CALCULATETABLE(
+    SUMMARIZECOLUMNS('Date'[Month], "Revenue", [Total Revenue]),
+    DATESINPERIOD('Date'[Date], TODAY(), -30, DAY)
+)
+```
+
+**Step 4: Use `measure_dax` to understand HOW each KPI is calculated**
+- Measure uses `DATESYTD()` → note it's a year-to-date figure in insights
+- Measure uses `DIVIDE()` with an `IF()` → zero-division guard; note denominator context
+- Measure uses `CALCULATE()` with a filter → be explicit about what filter applies
+
+**Step 4a: MANDATORY — Preserve visual type for Table and Matrix visuals**
+
+> ❌ THE SINGLE MOST COMMON MISTAKE: Converting a Table or Matrix visual into a bar/column chart.
+
+For every visual on each page, check the visual type in `pbip_context.json` → `pages[n].visuals[m].type`:
+- If `type` is `"tableEx"`, `"pivotTable"`, `"matrix"`, or any table variant → ChartSpec **MUST** use `type: "table"`
+- **Never** collapse a table into a bar or column chart, even if the data could be displayed that way
+- Preserve every row and column exactly as the table shows them
+- Use `table_columns` for column headers and `table_rows` for all data rows
+
+| Power BI visual type | Required ChartSpec type |
+|---|---|
+| `tableEx` / `table` | `"table"` |
+| `pivotTable` / `matrix` | `"table"` |
+| `barChart` / `clusteredBarChart` | `"bar"` |
+| `columnChart` / `clusteredColumnChart` | `"column"` |
+| `lineChart` | `"line"` |
+| `donutChart` | `"donut"` |
+| `pieChart` | `"pie"` |
+| `scatterChart` | `"scatter"` |
+| `gauge` / `singleValueGauge` | `"gauge"` |
+| `card` / `multiRowCard` | `"kpi"` or `"kpi_row"` |
+| `treemap` | `"treemap"` |
+| `funnel` | `"funnel"` |
+
+**Step 4b: MANDATORY — Cross-check every number: DAX result vs visual display**
+
+Before writing any number in an insight or headline, execute its DAX query and compare to what the visual shows:
+
+```
+DAX result  →  89%
+Visual shows → 89%   ✅ Use 89%
+
+DAX result  →  89%
+Visual shows → 87%   ✅ Use 89% (DAX is authoritative); note the discrepancy silently
+```
+
+- The DAX query result is always the source of truth
+- If your planned insight says 87% but DAX returned 89%, use 89%
+- Never state a number you have not verified with a DAX query (or visual, if DAX is unavailable)
+
+**Step 4c: MANDATORY — Match metric labels to DAX formula AND page filter context**
+
+Two sources define how a metric should be labelled. Check **both** before writing any label.
+
+**Source A — The DAX formula** (what the measure mathematically computes):
+- `DIVIDE([Sessions], [Users])` → "sessions per user" — **no time unit; stop here**
+- `DIVIDE([Sessions], [Users]) / [ActiveWeeks]` → "sessions per user per week" (week divisor is explicit)
+- `CALCULATE([M], DATESINPERIOD(..., -30, DAY))` → "over the last 30 days" (period baked into DAX)
+
+**Source B — Active page/visual filters** (what scope the measure evaluates over):
+- Check `pbip_context.json` → `pages[n].filters` and `pages[n].visuals[m].filters`
+- A date slicer set to "Mar–Jun 2025" means the measure runs over those 4 months → append as scope context: "sessions per user (Mar–Jun 2025)"
+- A slicer set to "Last 7 Days" → "sessions per user (last 7 days)"
+- Page/visual filters define the **evaluation window**, not an additional mathematical divisor
+
+**Combining both sources:**
+
+| DAX formula | Active filter | Correct label |
+|---|---|---|
+| `DIVIDE([S],[U])` | Slicer: Mar–Jun 2025 | "sessions per user (Mar–Jun 2025)" |
+| `DIVIDE([S],[U])` | Slicer: Last 7 days | "sessions per user (last 7 days)" |
+| `DIVIDE([S],[U])` | No date filter | "sessions per user (selected period)" |
+| `DIVIDE([S],[U]) / [Weeks]` | Any | "sessions per user per week" |
+
+**Rule: Never add a time unit that appears in neither the DAX formula nor the active page/visual filters. Every part of a metric label must be traceable to one of these two sources.**
+
+**Step 5: Generate insights from queried values — NOT from estimation**
+- Every number in insights must come from an executed DAX query result
+- Follow the same insight formula as the standard workflow
+- Reference measure names in parentheses: "47.3% completion rate ([Project Completion Rate])"
+
+**Step 6: Write insights to `temp/claude_insights.json`** (same format as always)
+
+### If DAX queries return no data
+
+- Power BI Desktop may not be open, or the MCP may not be connected
+- Fall back to any companion images if available (`temp/slide_N.png`)
+- If no images exist either, mark slide as "Insufficient data for analysis"
 
 ---
 

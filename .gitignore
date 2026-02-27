@@ -62,6 +62,9 @@ temp/
 # EXCEPT: Include the example storyboard template
 !Example-Storyboard-Analytics.pptx
 
+# MCP config (machine-specific absolute paths — do not commit)
+.mcp.json
+
 # OS files
 .DS_Store
 Thumbs.db
