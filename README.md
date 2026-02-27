@@ -98,7 +98,7 @@ To verify the setup:
 python setup_pbi_mcp.py --check
 ```
 
-> **Note:** The MCP server is sourced from [microsoft/powerbi-modeling-mcp](https://github.com/microsoft/powerbi-modeling-mcp). It runs locally and communicates with Power BI Desktop on your machine — no data leaves your environment.
+> **Note:** The MCP server is the official Microsoft release at [microsoft/powerbi-modeling-mcp](https://github.com/microsoft/powerbi-modeling-mcp). Microsoft distributes it as a VSIX package (no GitHub releases); the setup script downloads it directly from VS Marketplace following Microsoft's own instructions for non-VS Code MCP clients. It runs locally and communicates with Power BI Desktop on your machine — no data leaves your environment.
 
 ### Step 1: Open your report in Power BI Desktop
 

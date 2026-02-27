@@ -2,10 +2,16 @@
 """
 Power BI Modeling MCP — Setup & Configuration
 
-Downloads, installs, and configures the Microsoft Power BI Modeling MCP server
-so Claude Code can query live Power BI Desktop models via DAX.
+Installs the Microsoft Power BI Modeling MCP server so Claude Code can query
+live Power BI Desktop models via DAX.
 
-  https://github.com/microsoft/powerbi-modeling-mcp
+  Source / docs:  https://github.com/microsoft/powerbi-modeling-mcp
+
+The server is distributed as a VSIX package on VS Marketplace (there are no
+GitHub releases). This script downloads it directly from Marketplace, extracts
+the executable, and registers it in .mcp.json — no VS Code required. This is
+the installation method recommended by Microsoft for non-VS Code MCP clients:
+  https://github.com/microsoft/powerbi-modeling-mcp#other-mcp-clients
 
 Usage:
     python setup_pbi_mcp.py           # auto-detect, install, configure
@@ -218,11 +224,11 @@ def print_manual_steps():
     _box(
         "Automatic installation failed. Manual steps:",
         "",
-        "1. Open this URL in your browser:",
-        "   https://marketplace.visualstudio.com/items",
-        "   ?itemName=analysis-services.powerbi-modeling-mcp",
+        "1. Visit the source repo for instructions:",
+        "   https://github.com/microsoft/powerbi-modeling-mcp",
         "",
-        "2. Click 'Download Extension', rename the .vsix to .zip",
+        "2. Download the VSIX and rename it to .zip",
+        "   (see README > Other MCP clients)",
         "",
         "3. Extract to:  C:\\MCPServers\\PowerBIModelingMCP\\",
         "",
