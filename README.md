@@ -70,10 +70,10 @@ Your presentation is saved as `dashboard_executive.pptx` in the project folder.
 Feed the Power BI source file directly. Claude connects to the live data model via MCP and queries exact values using DAX — no visual estimation.
 
 **Why this mode is more powerful:**
-- Every number comes from a DAX query, not a screenshot read
-- Can drill into any dimension, filter, or time period
-- Measure logic is transparent (Claude reads the DAX expressions)
-- Handles reports where screenshots don't capture the full picture
+- KPIs and measures are queried via DAX against the live model — exact values, not visual estimates
+- Measure logic is transparent (Claude reads the DAX expressions to understand how each KPI is calculated)
+- Can drill into any dimension, filter, or time period beyond what's visible on screen
+- When Power BI Desktop is not running, falls back to static screenshots embedded in the file
 
 ### Prerequisites
 
@@ -137,11 +137,11 @@ convert to an executive deck "C:\path\to\your\report.pbip"
 Your presentation is saved as `report_executive.pptx`.
 
 **What Claude does automatically:**
-- Extracts report page structure and visual definitions
-- Reads every measure's DAX expression to understand how KPIs are calculated
-- Executes DAX queries against the live model for exact values
-- Cross-checks numbers between query results and on-screen visuals
-- Generates insights grounded in verified data (no estimation)
+- Extracts report page structure and visual definitions from the file
+- Reads every measure's DAX expression to understand how each KPI is calculated
+- Executes DAX queries against the live model for exact values (requires Power BI Desktop open)
+- Uses screenshots for visual context, chart type detection, and as fallback when Desktop isn't running
+- Generates insights grounded in DAX-verified numbers wherever possible
 - Renders clean 16:9 slides with SVG charts matching the original visual types
 
 ---
