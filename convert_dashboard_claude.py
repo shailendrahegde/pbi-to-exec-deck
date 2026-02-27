@@ -304,8 +304,8 @@ def _trigger_image_analysis(request, mcp_missing=False, context=None):
         print("ANALYSIS FOCUS (from --context):")
         print(f"  {context}")
         print("=" * 70 + "\n")
-        print("Apply the above focus throughout your analysis — prioritise insights,")
-        print("DAX queries, and recommendations that directly address it.\n")
+        print("Prioritise insights, headlines, and recommendations that directly")
+        print("address the focus above. Highlight relevant numbers prominently.\n")
 
     print(f"\nClaude Code: Please analyze these {request['total_slides']} dashboard images.\n")
 
@@ -476,14 +476,6 @@ def _trigger_pbip_analysis(request, context=None):
     print(f"\nClaude Code: Please analyze this Power BI report ({total} pages) "
           f"using the live model via MCP.\n")
 
-    if context:
-        print("=" * 70)
-        print("ANALYSIS FOCUS (from --context):")
-        print(f"  {context}")
-        print("=" * 70 + "\n")
-        print("Apply the above focus throughout your analysis — prioritise insights,")
-        print("DAX queries, and recommendations that directly address it.\n")
-
     print("Pages to analyze:")
     for slide in request['slides']:
         print(f"  - Page {slide['slide_number']}: {slide['title']} ({slide['slide_type']})")
@@ -491,15 +483,40 @@ def _trigger_pbip_analysis(request, context=None):
     print("\n" + "-" * 70)
     print("CLAUDE CODE TASK (PBIP / MCP MODE):")
     print("-" * 70)
-    print("""
-Act as senior analyst advisor to IT decision maker.
 
-This is a PBIP project — you have access to the LIVE Power BI model via
-the powerbi-modeling MCP server.  DO NOT estimate numbers from images.
-Query the model directly for exact values.
+    context_steps = ""
+    if context:
+        context_steps = f"""
+ANALYSIS FOCUS: {context}
 
-STEP 1: Read the context file
-    Read temp/pbip_context.json
+Before running any queries, scan pbip_context.json → model.tables and
+model.measures to identify which table and column best matches the focus
+above (e.g. a Group, Org, Department, or Manager column).
+
+For every pre-built query, run TWO variants:
+  1. Unfiltered (baseline — as written in dax_queries)
+  2. Filtered to the focus:
+       CALCULATE(<measure>, '<Table>'[<Column>] = "<value>")
+     or for a dimension breakdown:
+       CALCULATETABLE(
+           SUMMARIZECOLUMNS('<Table>'[<Column>], "<Measure>", [<Measure>]),
+           '<Table>'[<FilterCol>] = "<value>"
+       )
+
+Surface the filtered results prominently in insights and headlines.
+Where meaningful, state the delta vs the unfiltered baseline:
+  e.g. "Group A: 48.9 actions/user vs 30.8 org average (+59%)"
+"""
+
+    print(
+        "\nAct as senior analyst advisor to IT decision maker.\n\n"
+        "This is a PBIP project — you have access to the LIVE Power BI model via\n"
+        "the powerbi-modeling MCP server.  DO NOT estimate numbers from images.\n"
+        "Query the model directly for exact values.\n"
+        + (context_steps or "")
+        + "\nSTEP 1: Read the context file"
+    )
+    print("""    Read temp/pbip_context.json
     This contains: page structure, model metadata, and pre-built DAX queries.
 
 STEP 2: For each page, execute its DAX queries using the powerbi-modeling MCP
