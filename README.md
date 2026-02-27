@@ -114,7 +114,7 @@ MIT - Use freely for your organization
 
 ## Ready to Try?
 
-**Run the 3-step process above** on your Power BI dashboard.
+**Run the 3-step process above** on your dashboard.
 
 **You'll have a professional executive deck in under 3 minutes.**
 
