@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "pbi-to-exec-deck": {
+      "command": "python",
+      "args": ["C:\\path\\to\\pbi-to-exec-deck\\mcp_server.py"],
+      "cwd": "C:\\path\\to\\pbi-to-exec-deck"
+    },
+    "powerbi-modeling": {
+      "command": "C:\\MCPServers\\PowerBIModelingMCP\\extension\\server\\powerbi-modeling-mcp.exe",
+      "args": ["--start", "--readonly", "--skipconfirmation"]
+    }
+  }
+}

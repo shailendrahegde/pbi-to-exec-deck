@@ -14,3 +14,6 @@ markitdown>=0.0.1
 
 # Chart rendering (matplotlib PNG path)
 matplotlib>=3.7.0
+
+# MCP server (Claude Code plugin layer)
+mcp[cli]>=1.0.0

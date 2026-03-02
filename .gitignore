@@ -64,6 +64,8 @@ temp/
 
 # MCP config (machine-specific absolute paths — do not commit)
 .mcp.json
+# BUT track the template
+!.mcp.json.template
 
 # OS files
 .DS_Store

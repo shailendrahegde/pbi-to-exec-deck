@@ -173,6 +173,25 @@ def write_mcp_json(exe_path: Path):
     _ok(f"Command: {exe_path}")
 
 
+def register_deck_server():
+    """Register the pbi-to-exec-deck MCP server in .mcp.json."""
+    repo_dir = Path(__file__).parent.resolve()
+    cfg = {}
+    if MCP_JSON.exists():
+        try:
+            cfg = json.loads(MCP_JSON.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    cfg.setdefault("mcpServers", {})["pbi-to-exec-deck"] = {
+        "command": "python",
+        "args":    [str(repo_dir / "mcp_server.py")],
+        "cwd":     str(repo_dir)
+    }
+    MCP_JSON.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    _ok("pbi-to-exec-deck MCP server registered")
+
+
 # ─── 4. User-facing messages ──────────────────────────────────────────────────
 _BOX_W = 66
 
@@ -245,9 +264,25 @@ def main():
                     help="Check installation status only — no changes")
     ap.add_argument("--force", action="store_true",
                     help="Reinstall even if already configured")
+    ap.add_argument("--register-deck-server", action="store_true",
+                    help="Register only the pbi-to-exec-deck MCP server (skip PBI Modeling install)")
     args = ap.parse_args()
 
     _banner("Power BI Modeling MCP  —  Setup")
+
+    # ── Register deck server only ─────────────────────────────────────────────
+    if args.register_deck_server:
+        _step("Registering pbi-to-exec-deck MCP server")
+        register_deck_server()
+        print()
+        _box(
+            "pbi-to-exec-deck MCP server registered.",
+            "",
+            "Restart Claude Code to pick up the new server.",
+            "Claude will then have three tools available:",
+            "  prepare_dashboard  build_deck  check_pbi_connection"
+        )
+        return 0
 
     # ── Status snapshot ───────────────────────────────────────────────────────
     configured, cfg_exe = read_mcp_json_config()
@@ -278,6 +313,7 @@ def main():
     if existing_exe and not args.force:
         _step(f"Found existing installation — registering it")
         write_mcp_json(existing_exe)
+        register_deck_server()
         print_next_steps()
         return 0
 
@@ -294,6 +330,7 @@ def main():
     # ── Register ──────────────────────────────────────────────────────────────
     _step("Registering in .mcp.json")
     write_mcp_json(exe_path)
+    register_deck_server()
     print_next_steps()
     return 0
 
