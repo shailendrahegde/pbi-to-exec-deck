@@ -50,16 +50,13 @@ class ConstitutionValidator:
         """
         results = []
 
-        for title, insight in insights.items():
-            # Skip special keys used for executive summary and recommendations
-            # Handle both string keys and integer keys (slide numbers)
-            if isinstance(title, str) and title.startswith('__') and title.endswith('__'):
-                continue
+        content_slides = [
+            (title, insight) for title, insight in insights.items()
+            if not (isinstance(title, str) and title.startswith('__') and title.endswith('__'))
+            and not isinstance(title, int)
+        ]
 
-            # Skip integer keys (slide numbers - used for matching, not validation)
-            if isinstance(title, int):
-                continue
-
+        for title, insight in content_slides:
             # Section 4: Insight-driven headlines
             results.extend(self._validate_headline(title, insight.headline))
 
@@ -68,6 +65,12 @@ class ConstitutionValidator:
 
             # Section 6.3: Specific numbers from source
             results.extend(self._validate_numbers(title, insight))
+
+            # Chart coverage: at least one bullet should carry a chart spec
+            results.extend(self._validate_chart_coverage(title, insight.bullet_points))
+
+        # Deck-wide chart coverage summary
+        results.extend(self._validate_deck_chart_coverage(content_slides))
 
         return results
 
@@ -144,6 +147,84 @@ class ConstitutionValidator:
                         severity="error"
                     ))
                     break
+
+        return results
+
+    def _validate_chart_coverage(self, slide_title: str, bullets) -> List[ValidationResult]:
+        """Warn when no bullet on a slide carries a chart spec (screenshot fallback)."""
+        results = []
+
+        # Skip slides explicitly marked as insufficient data
+        combined = ' '.join(
+            b.text if hasattr(b, 'text') else str(b) for b in bullets
+        ).lower()
+        if 'insufficient data' in combined:
+            results.append(ValidationResult(
+                passed=True,
+                rule="Chart coverage: insufficient data slide",
+                message=f"Slide '{slide_title}' marked insufficient data — screenshot fallback accepted",
+                severity="info"
+            ))
+            return results
+
+        charts = [b.chart for b in bullets if hasattr(b, 'chart') and b.chart is not None]
+
+        if not charts:
+            results.append(ValidationResult(
+                passed=False,
+                rule="Chart coverage: SVG chart required per slide",
+                message=f"Slide '{slide_title}' has no chart spec — raw screenshot will be used instead of SVG",
+                severity="warning"
+            ))
+        else:
+            results.append(ValidationResult(
+                passed=True,
+                rule="Chart coverage: SVG chart present",
+                message=f"Slide '{slide_title}' has {len(charts)} chart(s): {', '.join(c.type for c in charts)}",
+                severity="info"
+            ))
+
+        return results
+
+    def _validate_deck_chart_coverage(self, content_slides: list) -> List[ValidationResult]:
+        """Report deck-wide chart coverage as a single summary result."""
+        results = []
+        if not content_slides:
+            return results
+
+        slides_with_charts = 0
+        for _, insight in content_slides:
+            combined = ' '.join(
+                b.text if hasattr(b, 'text') else str(b)
+                for b in insight.bullet_points
+            ).lower()
+            if 'insufficient data' in combined:
+                slides_with_charts += 1  # Exempt — not counted as missing
+                continue
+            if any(
+                hasattr(b, 'chart') and b.chart is not None
+                for b in insight.bullet_points
+            ):
+                slides_with_charts += 1
+
+        total = len(content_slides)
+        pct = round(slides_with_charts / total * 100) if total else 0
+
+        if slides_with_charts == total:
+            results.append(ValidationResult(
+                passed=True,
+                rule="Chart coverage: deck-wide summary",
+                message=f"100% chart coverage ({slides_with_charts}/{total} slides have SVG charts)",
+                severity="info"
+            ))
+        else:
+            missing = total - slides_with_charts
+            results.append(ValidationResult(
+                passed=False,
+                rule="Chart coverage: deck-wide summary",
+                message=f"{pct}% chart coverage — {missing}/{total} slide(s) missing SVG charts (screenshot fallback)",
+                severity="warning"
+            ))
 
         return results
 

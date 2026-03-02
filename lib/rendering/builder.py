@@ -534,13 +534,19 @@ class SlideBuilder:
             TEXT_W       = INS_W - ACCENT_BAR_W - TEXT_INDENT - Inches(0.05)
 
             spec = chart_bps[0].chart
+            chart_rendered = False
             if use_mpl and _MPL_AVAILABLE:
-                w_in = CHART_W   / 914400
-                h_in = CONTENT_H / 914400
-                png  = _mpl_render(spec, w_in, h_in, dpi=200)
-                slide.shapes.add_picture(io.BytesIO(png), MARGIN, CONTENT_TOP,
-                                         CHART_W, CONTENT_H)
-            else:
+                try:
+                    w_in = CHART_W   / 914400
+                    h_in = CONTENT_H / 914400
+                    png  = _mpl_render(spec, w_in, h_in, dpi=200)
+                    slide.shapes.add_picture(io.BytesIO(png), MARGIN, CONTENT_TOP,
+                                             CHART_W, CONTENT_H)
+                    chart_rendered = True
+                except Exception as _mpl_err:
+                    print(f"  WARNING [slide {slide_number}]: matplotlib render failed ({_mpl_err})"
+                          f" — trying native chart")
+            if not chart_rendered:
                 title_text = (spec.title or "").strip()
                 if title_text:
                     tb = slide.shapes.add_textbox(MARGIN, CONTENT_TOP - Inches(0.22),
@@ -555,7 +561,12 @@ class SlideBuilder:
                         run.font.size  = Pt(10)
                         run.font.bold  = False
                         run.font.color.rgb = RGBColor(89, 89, 89)
-                render_chart(slide, MARGIN, CONTENT_TOP, CHART_W, CONTENT_H, spec)
+                try:
+                    render_chart(slide, MARGIN, CONTENT_TOP, CHART_W, CONTENT_H, spec)
+                    chart_rendered = True
+                except Exception as _nc_err:
+                    print(f"  WARNING [slide {slide_number}]: native chart also failed ({_nc_err})"
+                          f" — chart omitted, screenshot fallback required")
 
             # Insight blocks stacked vertically on the right
             for i, bp in enumerate(bullet_points[:3]):
@@ -615,12 +626,18 @@ class SlideBuilder:
 
             for i, (cx, cw) in enumerate(positions):
                 spec = chart_bps[i].chart
+                chart_rendered = False
                 if use_mpl and _MPL_AVAILABLE:
-                    w_in = cw     / 914400
-                    h_in = CHART_H / 914400
-                    png  = _mpl_render(spec, w_in, h_in, dpi=200)
-                    slide.shapes.add_picture(io.BytesIO(png), cx, CHART_Y, cw, CHART_H)
-                else:
+                    try:
+                        w_in = cw     / 914400
+                        h_in = CHART_H / 914400
+                        png  = _mpl_render(spec, w_in, h_in, dpi=200)
+                        slide.shapes.add_picture(io.BytesIO(png), cx, CHART_Y, cw, CHART_H)
+                        chart_rendered = True
+                    except Exception as _mpl_err:
+                        print(f"  WARNING [slide {slide_number}, chart {i+1}]: matplotlib render failed"
+                              f" ({_mpl_err}) — trying native chart")
+                if not chart_rendered:
                     title_text = (spec.title or "").strip()
                     if title_text:
                         tb = slide.shapes.add_textbox(cx, CTITLE_Y, cw, CTITLE_H)
@@ -634,7 +651,11 @@ class SlideBuilder:
                             run.font.size  = Pt(10)
                             run.font.bold  = False
                             run.font.color.rgb = RGBColor(89, 89, 89)
-                    render_chart(slide, cx, CHART_Y, cw, CHART_H, spec)
+                    try:
+                        render_chart(slide, cx, CHART_Y, cw, CHART_H, spec)
+                    except Exception as _nc_err:
+                        print(f"  WARNING [slide {slide_number}, chart {i+1}]: native chart also failed"
+                              f" ({_nc_err}) — chart omitted")
 
             # Thin separator
             sep_y = CHART_Y + CHART_H + Inches(0.03)
@@ -1155,11 +1176,25 @@ def render_presentation(
                     for bp in insight.bullet_points
                 )
                 if has_charts:
-                    builder.add_polished_chart_slide(
-                        slide_number=slide_num,
-                        headline=insight.headline,
-                        bullet_points=insight.bullet_points
-                    )
+                    try:
+                        builder.add_polished_chart_slide(
+                            slide_number=slide_num,
+                            headline=insight.headline,
+                            bullet_points=insight.bullet_points
+                        )
+                    except Exception as _chart_err:
+                        print(f"  WARNING [slide {slide_num}]: chart slide render failed"
+                              f" ({_chart_err}) — falling back to screenshot layout")
+                        plain = [
+                            bp.text if hasattr(bp, 'text') else str(bp)
+                            for bp in insight.bullet_points
+                        ]
+                        builder.add_insight_slide(
+                            slide_number=slide_num,
+                            headline=insight.headline,
+                            insights=plain,
+                            source_image=source_image
+                        )
                 else:
                     plain = [
                         bp.text if hasattr(bp, 'text') else str(bp)
@@ -1203,11 +1238,25 @@ def render_presentation(
                     for bp in insight.bullet_points
                 )
                 if has_charts:
-                    builder.add_polished_chart_slide(
-                        slide_number=slide_idx + 1,
-                        headline=insight.headline,
-                        bullet_points=insight.bullet_points
-                    )
+                    try:
+                        builder.add_polished_chart_slide(
+                            slide_number=slide_idx + 1,
+                            headline=insight.headline,
+                            bullet_points=insight.bullet_points
+                        )
+                    except Exception as _chart_err:
+                        print(f"  WARNING [slide {slide_idx + 1}]: chart slide render failed"
+                              f" ({_chart_err}) — falling back to screenshot layout")
+                        plain = [
+                            bp.text if hasattr(bp, 'text') else str(bp)
+                            for bp in insight.bullet_points
+                        ]
+                        builder.add_insight_slide(
+                            slide_number=slide_idx + 1,
+                            headline=insight.headline,
+                            insights=plain,
+                            source_image=source_image
+                        )
                 else:
                     plain = [
                         bp.text if hasattr(bp, 'text') else str(bp)
