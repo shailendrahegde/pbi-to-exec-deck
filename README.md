@@ -29,6 +29,8 @@ cd pbi-to-exec-deck
 claude
 ```
 
+![Demo](demo.gif)
+
 Then paste the command above with your file path. Output is saved as `dashboard_executive.pptx` (~3 minutes).
 
 **How to export from Power BI:**
