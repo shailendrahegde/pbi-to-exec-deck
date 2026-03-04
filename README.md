@@ -8,7 +8,46 @@ Turn Power BI dashboards into polished, insight-driven presentations automatical
 
 ## Prerequisite
 
-**[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview)** — required for both modes. Python and all other dependencies are auto-installed on first run.
+**[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview)** — required for Claude mode. Python and other dependencies are auto-installed on first run.
+
+Optional: Install a PowerShell alias so you can run `convert-to-exec-deck` without `./`.
+
+```powershell
+./install-alias.ps1
+```
+
+## Claude Workflow
+
+Claude users should use the default flow documented below. No changes required.
+
+Single-command run (installs deps + converts + validates):
+In PowerShell, use `./convert-to-exec-deck.cmd`.
+
+```bash
+convert-to-exec-deck "C:\path\to\dashboard.pdf" --assistant claude
+```
+
+## GitHub Copilot Workflow
+
+Copilot Chat (agent mode) runs the same pipeline — no API key needed.
+Just ask Copilot Chat:
+
+> Convert `C:\path\to\dashboard.pptx` to an executive deck
+
+Copilot reads `COPILOT.md` (via `.github/copilot-instructions.md`) and
+automatically runs the three-step workflow:
+
+1. **Extract** — `python convert_dashboard_claude.py --source "<path>" --prepare --assistant copilot`
+2. **Analyze** — Copilot reads images + text layers, generates insights, writes `temp/claude_insights.json`
+3. **Build** — `python convert_dashboard_claude.py --build --output <output>.pptx`
+
+Manual dependency install (auto-installed on first run):
+
+```bash
+pip install -r requirements-copilot.txt
+```
+
+See [COPILOT.md](COPILOT.md) for the full schema, insight formula, and quality guidelines.
 
 ---
 

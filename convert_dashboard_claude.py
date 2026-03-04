@@ -166,7 +166,7 @@ def _is_mcp_ready() -> bool:
     return False
 
 
-def prepare_for_claude_analysis(source_path):
+def prepare_for_claude_analysis(source_path, use_text_layer: bool = False):
     """
     Extract slides/pages and prepare analysis request for Claude.
     Supports both .pptx and .pdf input files.
@@ -180,7 +180,7 @@ def prepare_for_claude_analysis(source_path):
     file_type = detect_file_type(source_path)
 
     if file_type == 'pdf':
-        return prepare_pdf_for_claude_analysis(source_path)
+        return prepare_pdf_for_claude_analysis(source_path, use_text_layer=use_text_layer)
 
     if file_type == 'pbip':
         _check_pbi_mcp_setup()
@@ -229,13 +229,35 @@ def prepare_for_claude_analysis(source_path):
             slides_to_analyze.append(slide_info)
             print(f"  OK Slide {idx+1}: {title[:50]}...")
 
+    if use_text_layer:
+        from lib.extraction.text_layer_extractor import enrich_slides_with_pptx_text
+        print("\nExtracting text layer from PPTX...")
+        enrich_slides_with_pptx_text(source_path, slides_to_analyze)
+
+    # OCR fallback: for slides where text-layer was insufficient (e.g. PBI
+    # dashboard PNGs), run EasyOCR to extract real numbers and labels.
+    if use_text_layer:
+        try:
+            from lib.extraction.ocr_extractor import enrich_slides_with_ocr
+            print("\nChecking text quality — OCR fallback if needed...")
+            ocr_count = enrich_slides_with_ocr(slides_to_analyze)
+            if ocr_count:
+                print(f"  OK  OCR enriched {ocr_count} slide(s)")
+            else:
+                print("  OK  Text layer sufficient — no OCR needed")
+        except ImportError:
+            print("\n  WARN  easyocr not installed — skipping OCR fallback")
+            print("         Install with: pip install easyocr")
+
     # Save analysis request
     request_file = 'temp/analysis_request.json'
     with open(request_file, 'w', encoding='utf-8') as f:
         json.dump({
             'source_file': source_path,
+            'source_type': 'pptx',
             'total_slides': len(slides_to_analyze),
-            'slides': slides_to_analyze
+            'slides': slides_to_analyze,
+            'text_layer_used': use_text_layer,
         }, f, indent=2)
 
     print(f"\nOK Prepared {len(slides_to_analyze)} slides for analysis")
@@ -263,6 +285,62 @@ Please say to Claude Code:
 After Claude completes, run:
     python convert_dashboard_claude.py --build --output [output.pptx]
 """)
+
+
+def show_copilot_instructions(request_file, context=None):
+    """Show instructions for Copilot Chat to generate insights.
+
+    When Copilot Chat (agent mode) is running this command, it will see
+    these instructions in the terminal output, read the extracted data,
+    generate insights, write the JSON, and then run the build step — all
+    automatically within the same session.
+    """
+    print("\n" + "=" * 70)
+    print("COPILOT CHAT: GENERATE INSIGHTS")
+    print("=" * 70)
+
+    with open(request_file, 'r', encoding='utf-8') as f:
+        request = json.load(f)
+
+    has_pbip_context = Path('temp/pbip_context.json').exists()
+    is_pbip = request.get('source_type') in ('pbip', 'pbix') or has_pbip_context
+
+    context_line = f"\n    Focus: {context}" if context else ""
+
+    print("\n--- COPILOT: do the following now ---")
+    if is_pbip:
+        print("  1. Read temp/pbip_context.json and temp/analysis_request.json")
+        print("  2. For each page, execute DAX queries via the powerbi-modeling MCP")
+        print("  3. Generate analyst-grade insights from queried values (see COPILOT.md)")
+        print("  4. Write temp/claude_insights.json (schema in COPILOT.md)")
+    else:
+        print(f"  1. Read {request_file}")
+        print("  2. Read each slide image listed in analysis_request.json")
+        print("  3. Use text_layer + text_metrics as supporting data; verify against images")
+        print("  4. Generate analyst-grade insights (see COPILOT.md for formula & schema)")
+        print("  5. Write temp/claude_insights.json")
+
+    print(f"\n  Then build the deck:{context_line}")
+    print("    python convert_dashboard_claude.py --build --output <output>.pptx")
+    print("\n--- end instructions ---")
+
+
+def _resolve_assistant(selection: str) -> str:
+    """Resolve assistant based on explicit selection or environment."""
+    if selection in ("claude", "copilot"):
+        return selection
+
+    # Best-effort detection for Claude Code environments.
+    claude_markers = [
+        "CLAUDE_CODE",
+        "ANTHROPIC_API_KEY",
+        "CLAUDE_SESSION",
+    ]
+    for key in claude_markers:
+        if os.environ.get(key):
+            return "claude"
+
+    return "copilot"
 
 
 def trigger_claude_analysis(request_file, context=None):
@@ -752,6 +830,9 @@ Examples:
   # With PDF input:
   python convert_dashboard_claude.py --source dashboard.pdf
 
+    # Use Copilot Chat (text-layer for PPTX/PDF):
+    python convert_dashboard_claude.py --source dashboard.pdf --assistant copilot
+
   # Auto mode (non-interactive, for Claude Code):
   python convert_dashboard_claude.py --source dashboard.pptx --auto
 
@@ -776,6 +857,8 @@ Examples:
                        help='Auto mode: skip interactive prompt (for non-interactive environments)')
     parser.add_argument('--context', default=None,
                        help='Optional analysis focus injected into the prompt, e.g. "spotlight Group A"')
+    parser.add_argument('--assistant', default='auto', choices=['claude', 'copilot', 'auto'],
+                       help='Which assistant to use for insights (claude, copilot, auto)')
 
     args = parser.parse_args()
 
@@ -783,6 +866,7 @@ Examples:
     # SINGLE-COMMAND WORKFLOW: Orchestrate all 3 steps automatically
     # ========================================================================
     if args.source and not args.prepare and not args.build:
+        assistant = _resolve_assistant(args.assistant)
         # Auto-generate output filename if not provided
         output_path = args.output or generate_output_filename(args.source)
         print("\n" + "=" * 70)
@@ -799,15 +883,18 @@ Examples:
         print("\n" + "=" * 70)
         print("STEP 1: EXTRACTING DASHBOARDS")
         print("=" * 70)
-        request_file = prepare_for_claude_analysis(args.source)
+        request_file = prepare_for_claude_analysis(args.source, use_text_layer=(assistant == 'copilot'))
 
-        # STEP 2: Trigger Claude analysis
-        trigger_claude_analysis(request_file, context=args.context)
+        # STEP 2: Trigger assistant analysis
+        if assistant == 'copilot':
+            show_copilot_instructions(request_file, context=args.context)
+        else:
+            trigger_claude_analysis(request_file, context=args.context)
 
         # Wait for Claude to generate insights
         # Auto-detect non-interactive environments and poll for insights file
         print("\n" + "=" * 70)
-        print("Waiting for Claude to complete analysis...")
+        print("Waiting for insights file...")
         print("=" * 70)
 
         max_wait = 300  # 5 minutes max
@@ -829,6 +916,10 @@ Examples:
             time.sleep(wait_interval)
             elapsed += wait_interval
         else:
+            if assistant == 'copilot':
+                print(f"Warning: Insights file not ready after {max_wait}s.")
+                print("Run Copilot Chat to generate temp/claude_insights.json and re-run this command.")
+                return 0
             print(f"Warning: Insights file not ready after {max_wait}s, proceeding anyway...")
 
         print("=" * 70)
@@ -854,8 +945,12 @@ Examples:
             print("Error: --source required")
             return 1
 
-        request_file = prepare_for_claude_analysis(args.source)
-        show_claude_instructions(request_file, context=args.context)
+        assistant = _resolve_assistant(args.assistant)
+        request_file = prepare_for_claude_analysis(args.source, use_text_layer=(assistant == 'copilot'))
+        if assistant == 'copilot':
+            show_copilot_instructions(request_file, context=args.context)
+        else:
+            show_claude_instructions(request_file, context=args.context)
 
     elif args.build:
         # Step 3: Build final presentation

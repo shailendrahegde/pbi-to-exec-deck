@@ -10,8 +10,22 @@ import re
 import io
 from pathlib import Path
 from typing import Optional
-import fitz  # PyMuPDF
+try:
+    import fitz  # PyMuPDF
+    _FITZ_AVAILABLE = True
+except Exception:
+    fitz = None
+    _FITZ_AVAILABLE = False
+try:
+    import pypdfium2 as pdfium
+    _PDFIUM_AVAILABLE = True
+except Exception:
+    pdfium = None
+    _PDFIUM_AVAILABLE = False
 from PIL import Image
+
+from lib.extraction.extractor import DashboardExtractor
+from lib.extraction.text_layer_extractor import sanitize_text
 
 
 def _apply_exif_correction(img: Image.Image) -> Image.Image:
@@ -214,7 +228,7 @@ def _split_image_into_strips(img: Image.Image, n_strips: int) -> list:
     return strips
 
 
-def extract_pdf_page_as_image(pdf_document: fitz.Document, page_idx: int, output_path: str) -> Optional[Image.Image]:
+def _extract_pdf_page_as_image_fitz(pdf_document, page_idx: int, output_path: str) -> Optional[Image.Image]:
     """
     Extract PDF page as PNG image (mirrors extract_slide_as_image for PPTX).
 
@@ -259,42 +273,61 @@ def extract_pdf_page_as_image(pdf_document: fitz.Document, page_idx: int, output
         return None
 
 
-def extract_pdf_page_title(page: fitz.Page) -> str:
-    """
-    Extract page title from PDF text layer (mirrors extract_slide_title for PPTX).
-
-    Args:
-        page: PyMuPDF page object
-
-    Returns:
-        Page title string (first non-empty line), or "Page N" if no text found
-    """
+def _extract_pdf_page_as_image_pdfium(pdf_document, page_idx: int, output_path: str) -> Optional[Image.Image]:
+    """Render PDF page using pypdfium2 (preferred if available)."""
     try:
-        # Get text from page
-        text = page.get_text("text")
+        if page_idx >= len(pdf_document):
+            return False
 
-        if not text or not text.strip():
-            return f"Page {page.number + 1}"
+        page = pdf_document[page_idx]
+        # Render at ~150 DPI
+        scale = 150 / 72
+        bitmap = page.render(scale=scale)
+        pil_image = bitmap.to_pil()
 
-        # Split into lines and find first non-empty line
-        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        pil_image = _apply_exif_correction(pil_image)
+        pil_image.save(output_path)
+        return pil_image
+    except Exception as e:
+        print(f"  WARNING: Failed to extract page {page_idx + 1}: {e}")
+        return None
 
-        if not lines:
-            return f"Page {page.number + 1}"
 
-        title = lines[0]
-
-        # Remove emoji characters (same regex as PPTX version)
-        title = re.sub(r'[\U00010000-\U0010ffff]', '', title).strip()
-
-        # Fallback if empty after emoji removal
-        if not title:
-            return f"Page {page.number + 1}"
-
-        return title
-
+def _extract_pdf_page_text_fitz(page) -> str:
+    try:
+        return page.get_text("text")
     except Exception:
-        return f"Page {page.number + 1}"
+        return ""
+
+
+def _extract_pdf_page_text_pdfium(pdf_document, page_idx: int) -> str:
+    try:
+        page = pdf_document[page_idx]
+        text_page = page.get_textpage()
+        return text_page.get_text_range() or ""
+    except Exception:
+        return ""
+
+
+def extract_pdf_page_title_from_text(text: str, page_idx: int) -> str:
+    """
+    Extract page title from text layer (mirrors extract_slide_title for PPTX).
+
+    Returns first non-empty line or "Page N".
+    """
+    if not text or not text.strip():
+        return f"Page {page_idx + 1}"
+
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    if not lines:
+        return f"Page {page_idx + 1}"
+
+    title = lines[0]
+    title = re.sub(r'[\U00010000-\U0010ffff]', '', title).strip()
+    if not title:
+        return f"Page {page_idx + 1}"
+
+    return title
 
 
 def classify_slide_type(title: str) -> str:
@@ -323,7 +356,7 @@ def classify_slide_type(title: str) -> str:
         return 'general'
 
 
-def prepare_pdf_for_claude_analysis(source_path: str) -> str:
+def prepare_pdf_for_claude_analysis(source_path: str, use_text_layer: bool = False) -> str:
     """
     Prepare PDF pages for Claude analysis (mirrors prepare_for_claude_analysis for PPTX).
 
@@ -341,14 +374,25 @@ def prepare_pdf_for_claude_analysis(source_path: str) -> str:
     print("PREPARING PDF PAGES FOR CLAUDE ANALYSIS")
     print("=" * 70)
 
-    # Open PDF document
-    try:
-        pdf_doc = fitz.open(source_path)
-    except Exception as e:
-        raise IOError(f"Failed to open PDF file '{source_path}': {e}")
+    pdf_doc = None
+    if _FITZ_AVAILABLE:
+        try:
+            pdf_doc = fitz.open(source_path)
+        except Exception:
+            pdf_doc = None
 
-    # Validate PDF
-    if len(pdf_doc) == 0:
+    pdfium_doc = None
+    if _PDFIUM_AVAILABLE:
+        try:
+            pdfium_doc = pdfium.PdfDocument(source_path)
+        except Exception:
+            pdfium_doc = None
+
+    if pdf_doc is None and pdfium_doc is None:
+        raise IOError(f"Failed to open PDF file '{source_path}': no PDF backend available")
+
+    page_count = len(pdfium_doc) if pdfium_doc is not None else len(pdf_doc)
+    if page_count == 0:
         raise ValueError(f"PDF file '{source_path}' is empty (0 pages)")
 
     # Create temp directory for images
@@ -356,19 +400,30 @@ def prepare_pdf_for_claude_analysis(source_path: str) -> str:
 
     pages_to_analyze = []
 
-    print(f"\nExtracting all {len(pdf_doc)} pages from PDF...")
+    print(f"\nExtracting all {page_count} pages from PDF...")
     print("  (PDF exports typically have dashboard content on page 1)")
 
     slide_counter = 0  # Sequential slide number across all pages and strips
 
-    for page_idx in range(len(pdf_doc)):
+    extractor = DashboardExtractor()
+
+    for page_idx in range(page_count):
         # Include all pages for PDF (unlike PPTX which skips cover page)
-        page = pdf_doc[page_idx]
-        title = extract_pdf_page_title(page)
+        if pdfium_doc is not None:
+            page_text = _extract_pdf_page_text_pdfium(pdfium_doc, page_idx)
+        else:
+            page = pdf_doc[page_idx]
+            page_text = _extract_pdf_page_text_fitz(page)
+
+        page_text = sanitize_text(page_text)
+        title = extract_pdf_page_title_from_text(page_text, page_idx)
         raw_path = f"temp/page_{page_idx + 1}_raw.png"
 
         # Extract page as image (EXIF-corrected, no rotation)
-        img = extract_pdf_page_as_image(pdf_doc, page_idx, raw_path)
+        if pdfium_doc is not None:
+            img = _extract_pdf_page_as_image_pdfium(pdfium_doc, page_idx, raw_path)
+        else:
+            img = _extract_pdf_page_as_image_fitz(pdf_doc, page_idx, raw_path)
 
         if img is None:
             continue
@@ -404,8 +459,24 @@ def prepare_pdf_for_claude_analysis(source_path: str) -> str:
                 'slide_number': slide_counter,
                 'title': strip_title,
                 'image_path': image_path,
-                'slide_type': classify_slide_type(title)
+                'slide_type': classify_slide_type(title),
+                'text_layer': page_text,
+                'text_metrics': [],
+                'text_key_phrases': [],
             }
+            if use_text_layer:
+                metrics = extractor._extract_metrics(page_text)
+                key_phrases = extractor._extract_key_phrases(page_text)
+                page_info['text_metrics'] = [
+                    {
+                        'value': m.value,
+                        'numeric_value': m.numeric_value,
+                        'context': m.context,
+                        'metric_type': m.metric_type,
+                    }
+                    for m in metrics
+                ]
+                page_info['text_key_phrases'] = key_phrases
             pages_to_analyze.append(page_info)
 
         # Clean up raw file if strips were saved separately
@@ -414,15 +485,23 @@ def prepare_pdf_for_claude_analysis(source_path: str) -> str:
             os.remove(raw_path)
 
     # Close PDF document
-    pdf_doc.close()
+    if pdf_doc is not None:
+        pdf_doc.close()
+    if pdfium_doc is not None:
+        try:
+            pdfium_doc.close()
+        except Exception:
+            pass
 
     # Save analysis request (identical structure to PPTX version)
     request_file = 'temp/analysis_request.json'
     with open(request_file, 'w', encoding='utf-8') as f:
         json.dump({
             'source_file': source_path,
+            'source_type': 'pdf',
             'total_slides': len(pages_to_analyze),
-            'slides': pages_to_analyze
+            'slides': pages_to_analyze,
+            'text_layer_used': use_text_layer,
         }, f, indent=2)
 
     print(f"\nOK Prepared {len(pages_to_analyze)} pages for analysis")

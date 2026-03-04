@@ -1,0 +1,14 @@
+# Power BI to Executive Deck Converter - Copilot Dependencies
+
+# Base dependencies
+python-pptx>=0.6.21
+Pillow>=9.0.0
+PyMuPDF>=1.23.0
+markitdown>=0.0.1
+matplotlib>=3.7.0
+
+# PDF rendering and text layer extraction (preferred)
+pypdfium2>=4.30.0
+
+# OCR fallback for Power BI PPTX exports (dashboard images)
+easyocr>=1.7.0
