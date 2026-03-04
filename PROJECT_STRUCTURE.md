@@ -11,7 +11,7 @@ Clean, minimal structure for converting Power BI dashboards to executive present
 - **`LICENSE`** (1KB) - MIT license
 
 ### Conversion Script
-- **`convert_dashboard_claude.py`** (8KB) - Main converter (3-step workflow)
+- **`convert_dashboard.py`** (8KB) - Main converter (3-step workflow)
 
 ### Templates & Standards
 - **`Example-Storyboard-Analytics.pptx`** (1MB) - Visual template reference
@@ -100,7 +100,7 @@ tests/
 - ❌ `create_exec_deck.py` - Early prototype
 - ❌ `create_exec_deck_v2.py` - Early prototype
 
-**Why removed:** Replaced by `convert_dashboard_claude.py`
+**Why removed:** Replaced by `convert_dashboard.py`
 
 ### Old Documentation (Redundant)
 - ❌ `CONSISTENCY-GUIDE.md` - Superseded by Constitution
@@ -137,7 +137,7 @@ tests/
 ```
 pbi-to-exec-deck/
 ├── README.md                               # Start here
-├── convert_dashboard_claude.py             # Run this
+├── convert_dashboard.py             # Run this
 ├── CLAUDE.md                               # Claude reads this
 ├── Claude PowerPoint Constitution.md       # Quality standards
 ├── Example-Storyboard-Analytics.pptx       # Template reference
@@ -156,14 +156,14 @@ pbi-to-exec-deck/
 
 ✅ Clone repository
 ✅ Ensure files exist:
-   - `convert_dashboard_claude.py`
+   - `convert_dashboard.py`
    - `Example-Storyboard-Analytics.pptx`
    - `CLAUDE.md`
    - `lib/` directory
 ✅ Export Power BI dashboard to .pptx
-✅ Run: `python convert_dashboard_claude.py --source dashboard.pptx --prepare`
+✅ Run: `python convert_dashboard.py --source dashboard.pptx --prepare`
 ✅ Ask Claude to generate insights
-✅ Run: `python convert_dashboard_claude.py --build --output result.pptx`
+✅ Run: `python convert_dashboard.py --build --output result.pptx`
 ✅ Done!
 
 ---

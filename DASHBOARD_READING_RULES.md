@@ -299,6 +299,47 @@
 
 ---
 
+### Rule 17: OCR Cross-Verification — Never Trust OCR Context Alone
+
+**Problem:** OCR extracts text fragments sorted by position. A number like "151" may appear near "AI Skills" in the OCR output but actually belongs to "Business Management" on the dashboard. Blindly using OCR `context` fields leads to misattribution.
+
+**Context:** The OCR extractor now groups fragments into spatial rows (same Y-position → same row, sorted left-to-right). The `text_layer` uses `·` separators to show row groupings. However, spatial grouping is heuristic and dense dashboards can still produce ambiguous associations.
+
+**Rule:**
+- When `analysis_request.json` marks a slide with `"ocr_used": true`, the text layer is OCR-generated
+- For EVERY number you plan to cite from an OCR-enriched slide, open the slide image and visually confirm which label the number belongs to
+- Do NOT rely solely on `text_metrics[].context` — it approximates spatial proximity but is not infallible
+- If the image is unclear or the number is ambiguous, describe the trend qualitatively instead
+
+**Validation:**
+- ✅ "Business Management: 151 people (verified against image — label is directly left of value)"
+- ❌ "AI Skills: 151 people (took from OCR context — never checked image)"
+
+---
+
+### Rule 18: No Vanilla Statements — Pass the "So What?" Test
+
+**Problem:** Headlines like "Four groups form the org structure" or "Skills are distributed across categories" describe the chart but provide zero decision-making value. Executives skip these and lose trust in the entire deck.
+
+**Rule:**
+- Every headline and insight must pass: *"Would a VP forward this bullet to their boss?"*
+- Every statement must contain: (a) a specific number AND (b) an implication or action
+- If a statement could apply to ANY dashboard, it's too generic — make it specific to THIS data
+
+**Rewrite examples:**
+| ❌ Vanilla | ✅ Executive-grade |
+|---|---|
+| "Four groups form the org structure" | "Top quartile (4 teams, 38% of users) generates 71% of all actions — concentrate enablement here" |
+| "The report covers AI skills" | "Business Management dominates at 45% of confirmed skills — AI-specific gaps signal training opportunity" |
+| "There are 151 people in the dataset" | "151-person sample with 45% skill confirmation rate — statistically significant base for org-wide rollout" |
+| "Skills are distributed across categories" | "3 of 8 categories account for 80% of confirmations — focus L&D on the long tail" |
+
+**Validation:**
+- ✅ Contains a number + implication + action or decision cue
+- ❌ Describes the chart structure without saying why it matters
+
+---
+
 ## Pre-Analysis Checklist
 
 Before generating insights for a dashboard page:
@@ -313,6 +354,9 @@ Before generating insights for a dashboard page:
 8. [ ] **Visual type check**: Is this a Table or Matrix? → ChartSpec type MUST be `"table"` (Rule 14)
 9. [ ] **PBIP only**: Execute DAX query for every number before citing it (Rule 15)
 10. [ ] **PBIP only**: Read DAX formula before labeling the metric — no time units unless in the formula (Rule 16)
+11. [ ] **OCR slides**: Cross-verify every number-to-label pairing against the image (Rule 17)
+12. [ ] **Every headline**: Passes the "Would a VP forward this?" test — no vanilla (Rule 18)
+13. [ ] **Chart coverage**: Every slide with quantitative data has at least one `"chart"` spec
 
 ---
 

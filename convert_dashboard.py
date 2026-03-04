@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Claude-Powered Dashboard Converter
+Dashboard-to-Executive-Deck Converter
 
-Uses current Claude Code session to generate analyst-grade insights.
-No API key needed - leverages the interactive Claude session.
+Works with Claude Code or GitHub Copilot Chat to generate analyst-grade insights.
+No API key needed — leverages the interactive assistant session.
 
 Workflow:
 1. Extract slides as images (deterministic)
-2. Prepare analysis request for Claude
-3. Claude analyzes each image and generates insights
+2. Prepare analysis request for the assistant
+3. Assistant analyzes each image and generates insights
 4. Build final presentation with insights
 """
 
@@ -21,7 +21,7 @@ from pathlib import Path
 from pptx import Presentation
 from PIL import Image
 import io
-from lib.extraction.pdf_extractor import prepare_pdf_for_claude_analysis
+from lib.extraction.pdf_extractor import prepare_pdf_for_analysis
 
 
 def extract_slide_as_image(prs, slide_idx, output_path):
@@ -166,9 +166,9 @@ def _is_mcp_ready() -> bool:
     return False
 
 
-def prepare_for_claude_analysis(source_path, use_text_layer: bool = False):
+def prepare_for_analysis(source_path, use_text_layer: bool = False):
     """
-    Extract slides/pages and prepare analysis request for Claude.
+    Extract slides/pages and prepare analysis request for the assistant.
     Supports both .pptx and .pdf input files.
 
     Args:
@@ -180,21 +180,21 @@ def prepare_for_claude_analysis(source_path, use_text_layer: bool = False):
     file_type = detect_file_type(source_path)
 
     if file_type == 'pdf':
-        return prepare_pdf_for_claude_analysis(source_path, use_text_layer=use_text_layer)
+        return prepare_pdf_for_analysis(source_path, use_text_layer=use_text_layer)
 
     if file_type == 'pbip':
         _check_pbi_mcp_setup()
-        from lib.extraction.pbip_extractor import prepare_pbip_for_claude_analysis
-        return prepare_pbip_for_claude_analysis(source_path)
+        from lib.extraction.pbip_extractor import prepare_pbip_for_analysis
+        return prepare_pbip_for_analysis(source_path)
 
     if file_type == 'pbix':
         _check_pbi_mcp_setup()
-        from lib.extraction.pbix_extractor import prepare_pbix_for_claude_analysis
-        return prepare_pbix_for_claude_analysis(source_path)
+        from lib.extraction.pbix_extractor import prepare_pbix_for_analysis
+        return prepare_pbix_for_analysis(source_path)
 
     # Original PPTX logic continues below
     print("=" * 70)
-    print("PREPARING SLIDES FOR CLAUDE ANALYSIS")
+    print("PREPARING SLIDES FOR ANALYSIS")
     print("=" * 70)
 
     prs = Presentation(source_path)
@@ -280,10 +280,10 @@ Claude will now analyze each dashboard image and generate insights.
 Please say to Claude Code:
 
     "Analyze the dashboards in {request_file} and generate analyst-grade insights.{context_line}
-    Save results to temp/claude_insights.json"
+    Save results to temp/insights.json"
 
 After Claude completes, run:
-    python convert_dashboard_claude.py --build --output [output.pptx]
+    python convert_dashboard.py --build --output [output.pptx]
 """)
 
 
@@ -312,16 +312,16 @@ def show_copilot_instructions(request_file, context=None):
         print("  1. Read temp/pbip_context.json and temp/analysis_request.json")
         print("  2. For each page, execute DAX queries via the powerbi-modeling MCP")
         print("  3. Generate analyst-grade insights from queried values (see COPILOT.md)")
-        print("  4. Write temp/claude_insights.json (schema in COPILOT.md)")
+        print("  4. Write temp/insights.json (schema in COPILOT.md)")
     else:
         print(f"  1. Read {request_file}")
         print("  2. Read each slide image listed in analysis_request.json")
         print("  3. Use text_layer + text_metrics as supporting data; verify against images")
         print("  4. Generate analyst-grade insights (see COPILOT.md for formula & schema)")
-        print("  5. Write temp/claude_insights.json")
+        print("  5. Write temp/insights.json")
 
     print(f"\n  Then build the deck:{context_line}")
-    print("    python convert_dashboard_claude.py --build --output <output>.pptx")
+    print("    python convert_dashboard.py --build --output <output>.pptx")
     print("\n--- end instructions ---")
 
 
@@ -416,7 +416,7 @@ the source titles - just make sure every slide has an entry.
 
 Follow Claude PowerPoint Constitution Section 5A guidelines.
 
-Save results to: temp/claude_insights.json
+Save results to: temp/insights.json
 
 Also generate a compelling deck_title and deck_subtitle:
 - deck_title: the single core story of the deck, positively framed.
@@ -618,7 +618,7 @@ STEP 5: Generate analyst-grade insights from QUERIED values (not estimates):
     - Include the measure name alongside the value for traceability
     - Follow the same insight formula: headline + 3 insights per slide
 
-STEP 6: Save insights to temp/claude_insights.json (same format as always)
+STEP 6: Save insights to temp/insights.json (same format as always)
 
 IMPORTANT: Include ALL pages in your output. Use slide_number matching the
 analysis_request.json to ensure complete coverage.
@@ -724,12 +724,144 @@ Output format:
     print("-" * 70)
 
 
+# ---------------------------------------------------------------------------
+# Insight verification — catches missing charts & weak insights before build
+# ---------------------------------------------------------------------------
+
+def verify_insights(insights_file: str = "temp/insights.json",
+                    request_file: str = "temp/analysis_request.json") -> dict:
+    """Verify generated insights for common quality problems.
+
+    Checks for:
+      1. Slides where every chart spec is null (missing charts)
+      2. Slide count mismatch (insights vs analysis request)
+      3. Generic / vanilla headline patterns
+      4. Missing executive summary or recommendations
+
+    Returns a dict:
+      {"passed": bool, "warnings": [str], "errors": [str]}
+    """
+    warnings: list = []
+    errors: list = []
+
+    # Load insights
+    try:
+        with open(insights_file, 'r', encoding='utf-8') as f:
+            insights = json.load(f)
+    except FileNotFoundError:
+        return {"passed": False, "warnings": [],
+                "errors": [f"Insights file not found: {insights_file}"]}
+    except json.JSONDecodeError as e:
+        return {"passed": False, "warnings": [],
+                "errors": [f"Invalid JSON in {insights_file}: {e}"]}
+
+    slides = insights.get("slides", [])
+    if not slides:
+        return {"passed": False, "warnings": [],
+                "errors": ["No slides found in insights JSON"]}
+
+    # ── Check 1: Missing charts ──────────────────────────────────────────
+    for s in slides:
+        slide_num = s.get("slide_number", "?")
+        insight_items = s.get("insights", [])
+        has_chart = False
+        for item in insight_items:
+            if isinstance(item, dict) and item.get("chart"):
+                has_chart = True
+                break
+
+        if not has_chart:
+            headline = s.get("headline", "")
+            if headline.lower().strip() != "insufficient data for analysis":
+                warnings.append(
+                    f"Slide {slide_num}: No chart spec — will use screenshot fallback. "
+                    f"Review whether chart data is extractable."
+                )
+
+    # ── Check 2: Slide count ─────────────────────────────────────────────
+    try:
+        with open(request_file, 'r', encoding='utf-8') as f:
+            request = json.load(f)
+        expected = request.get("total_slides", 0)
+        actual = len(slides)
+        if expected and actual < expected:
+            warnings.append(
+                f"Slide count mismatch: expected {expected}, got {actual}. "
+                f"Some dashboard pages may be missing from insights."
+            )
+    except Exception:
+        pass  # Non-critical — request file may not exist in --verify mode
+
+    # ── Check 3: Generic / vanilla headlines ─────────────────────────────
+    _VANILLA_PATTERNS = [
+        "groups form",
+        "org structure",
+        "overview of",
+        "shows the",
+        "displays the",
+        "presents the",
+        "summary of",
+        "breakdown of",
+        "distribution of",
+        "there are",
+        "this page shows",
+        "this slide shows",
+    ]
+    for s in slides:
+        headline = (s.get("headline") or "").lower()
+        for pat in _VANILLA_PATTERNS:
+            if pat in headline:
+                warnings.append(
+                    f"Slide {s.get('slide_number', '?')}: Headline may be too "
+                    f"generic (matched '{pat}'). Headlines should answer 'so what?' "
+                    f"for an executive — not describe the chart."
+                )
+                break
+
+    # ── Check 4: Missing executive summary / recommendations ─────────────
+    if not insights.get("executive_summary"):
+        errors.append("Missing 'executive_summary' — required for the summary slide.")
+    if not insights.get("recommendations"):
+        warnings.append("Missing 'recommendations' — strongly recommended.")
+    if not insights.get("deck_title") or insights.get("deck_title") == "Executive Insights":
+        warnings.append("Deck title is generic. Generate a compelling, specific title.")
+
+    passed = len(errors) == 0
+
+    # ── Print report ─────────────────────────────────────────────────────
+    print("\n" + "=" * 70)
+    print("INSIGHT VERIFICATION REPORT")
+    print("=" * 70)
+
+    if errors:
+        for e in errors:
+            print(f"  ERROR  {e}")
+    if warnings:
+        for w in warnings:
+            print(f"  WARN   {w}")
+    if not errors and not warnings:
+        print("  OK  All checks passed — insights look good")
+
+    print(f"\n  Result: {'PASS' if passed else 'FAIL'} "
+          f"({len(errors)} error(s), {len(warnings)} warning(s))")
+    print("=" * 70)
+
+    return {"passed": passed, "warnings": warnings, "errors": errors}
+
+
 def build_presentation_from_insights(source_path, output_path, insights_file):
     """Build final presentation using Claude's insights"""
 
     print("\n" + "=" * 70)
     print("BUILDING FINAL PRESENTATION")
     print("=" * 70)
+
+    # ── Pre-build verification ──────────────────────────────────────────
+    vresult = verify_insights(insights_file)
+    if not vresult["passed"]:
+        print("\n  Build aborted — fix the errors above before building.")
+        return
+    # Warnings are non-blocking: print them and continue
 
     # Load Claude's insights
     with open(insights_file, 'r', encoding='utf-8') as f:
@@ -796,7 +928,7 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
 def _cleanup_insight_files():
     """Delete per-run insight artefacts after a successful build."""
     import os
-    for fname in ("temp/claude_insights.json", "temp/write_insights.py"):
+    for fname in ("temp/insights.json", "temp/write_insights.py"):
         try:
             os.remove(fname)
         except FileNotFoundError:
@@ -820,28 +952,28 @@ def generate_output_filename(source_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Convert Power BI dashboards using Claude Code for insights',
+        description='Convert Power BI dashboards to executive presentations',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Single command (automatic workflow):
-  python convert_dashboard_claude.py --source dashboard.pptx
+  python convert_dashboard.py --source dashboard.pptx
 
   # With PDF input:
-  python convert_dashboard_claude.py --source dashboard.pdf
+  python convert_dashboard.py --source dashboard.pdf
 
     # Use Copilot Chat (text-layer for PPTX/PDF):
-    python convert_dashboard_claude.py --source dashboard.pdf --assistant copilot
+    python convert_dashboard.py --source dashboard.pdf --assistant copilot
 
   # Auto mode (non-interactive, for Claude Code):
-  python convert_dashboard_claude.py --source dashboard.pptx --auto
+  python convert_dashboard.py --source dashboard.pptx --auto
 
   # With custom output name:
-  python convert_dashboard_claude.py --source dashboard.pptx --output executive.pptx
+  python convert_dashboard.py --source dashboard.pptx --output executive.pptx
 
   # Manual workflow (step-by-step):
-  python convert_dashboard_claude.py --source dashboard.pptx --prepare
-  python convert_dashboard_claude.py --build --output executive.pptx
+  python convert_dashboard.py --source dashboard.pptx --prepare
+  python convert_dashboard.py --build --output executive.pptx
 """
     )
 
@@ -851,8 +983,10 @@ Examples:
                        help='Prepare slides for Claude analysis (Step 1 only)')
     parser.add_argument('--build', action='store_true',
                        help='Build final presentation from Claude insights (Step 3 only)')
-    parser.add_argument('--insights', default='temp/claude_insights.json',
-                       help='Path to Claude insights JSON (default: temp/claude_insights.json)')
+    parser.add_argument('--verify', action='store_true',
+                       help='Verify insights JSON for missing charts, weak headlines, etc.')
+    parser.add_argument('--insights', default='temp/insights.json',
+                       help='Path to insights JSON (default: temp/insights.json)')
     parser.add_argument('--auto', action='store_true',
                        help='Auto mode: skip interactive prompt (for non-interactive environments)')
     parser.add_argument('--context', default=None,
@@ -876,14 +1010,14 @@ Examples:
         print(f"Output: {output_path}")
         print("\nThis will run all 3 steps automatically:")
         print("  1. Extract dashboard images")
-        print("  2. Claude analyzes and generates insights")
+        print("  2. Assistant analyzes and generates insights")
         print("  3. Build executive presentation")
 
         # STEP 1: Prepare slides for analysis
         print("\n" + "=" * 70)
         print("STEP 1: EXTRACTING DASHBOARDS")
         print("=" * 70)
-        request_file = prepare_for_claude_analysis(args.source, use_text_layer=(assistant == 'copilot'))
+        request_file = prepare_for_analysis(args.source, use_text_layer=(assistant == 'copilot'))
 
         # STEP 2: Trigger assistant analysis
         if assistant == 'copilot':
@@ -918,7 +1052,7 @@ Examples:
         else:
             if assistant == 'copilot':
                 print(f"Warning: Insights file not ready after {max_wait}s.")
-                print("Run Copilot Chat to generate temp/claude_insights.json and re-run this command.")
+                print("Run Copilot Chat to generate temp/insights.json and re-run this command.")
                 return 0
             print(f"Warning: Insights file not ready after {max_wait}s, proceeding anyway...")
 
@@ -939,14 +1073,19 @@ Examples:
     # ========================================================================
     # MANUAL WORKFLOW: Individual steps
     # ========================================================================
+    if args.verify:
+        # Standalone verification (no build)
+        result = verify_insights(args.insights)
+        return 0 if result["passed"] else 1
+
     if args.prepare or (args.source and not args.build):
-        # Step 1: Prepare slides for Claude
+        # Step 1: Prepare slides
         if not args.source:
             print("Error: --source required")
             return 1
 
         assistant = _resolve_assistant(args.assistant)
-        request_file = prepare_for_claude_analysis(args.source, use_text_layer=(assistant == 'copilot'))
+        request_file = prepare_for_analysis(args.source, use_text_layer=(assistant == 'copilot'))
         if assistant == 'copilot':
             show_copilot_instructions(request_file, context=args.context)
         else:

@@ -2,7 +2,7 @@
 PBIX Extraction Module
 
 Extracts report pages, semantic model metadata, and static screenshots from
-Power BI .pbix files (ZIP archives). Enables Claude to analyze PBIX files
+Power BI .pbix files (ZIP archives). Enables the assistant to analyze PBIX files
 without opening Power BI Desktop.
 
 .pbix uses the same report JSON structure as .pbip but wraps it in a single
@@ -534,7 +534,7 @@ def _classify_slide_type(title: str) -> str:
 # 6. Main entry point
 # ---------------------------------------------------------------------------
 
-def prepare_pbix_for_claude_analysis(pbix_path: str) -> str:
+def prepare_pbix_for_analysis(pbix_path: str) -> str:
     """
     Main entry point. Opens the .pbix ZIP and orchestrates all extraction steps.
 
@@ -553,7 +553,7 @@ def prepare_pbix_for_claude_analysis(pbix_path: str) -> str:
     Returns path to analysis_request.json.
     """
     print("=" * 70)
-    print("PREPARING PBIX FILE FOR CLAUDE ANALYSIS")
+    print("PREPARING PBIX FILE FOR ANALYSIS")
     print("=" * 70)
 
     pbix_path = Path(pbix_path)

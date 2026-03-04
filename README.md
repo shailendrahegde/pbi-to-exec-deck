@@ -4,73 +4,116 @@
 
 Turn Power BI dashboards into polished, insight-driven presentations automatically. No design skills, no manual slide-building, no copy-pasting numbers.
 
+Works with **Claude Code** or **GitHub Copilot Chat** — choose the assistant that fits your setup.
+
 ---
 
-## Prerequisite
+## Quick Start
 
-**[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview)** — required for Claude mode. Python and other dependencies are auto-installed on first run.
+```bash
+git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
+cd pbi-to-exec-deck
+```
 
-Optional: Install a PowerShell alias so you can run `convert-to-exec-deck` without `./`.
+Then pick your assistant:
+
+| | Claude Code | GitHub Copilot Chat |
+|---|---|---|
+| **Setup** | [Install Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview) | Open repo in VS Code with Copilot |
+| **Run** | `claude` → _"convert to an executive deck ‹path›"_ | Ask Copilot Chat: _"Convert ‹path› to an executive deck"_ |
+| **API key?** | Uses Claude session | No key needed |
+| **Deps** | `requirements.txt` | `requirements-copilot.txt` |
+
+Dependencies are auto-installed on first run. You can also install manually:
+
+```bash
+pip install -r requirements.txt          # Claude
+pip install -r requirements-copilot.txt  # Copilot
+```
+
+Optional PowerShell alias (run `convert-to-exec-deck` from anywhere):
 
 ```powershell
 ./install-alias.ps1
 ```
 
-## Claude Workflow
+---
 
-Claude users should use the default flow documented below. No changes required.
+## How It Works
 
-Single-command run (installs deps + converts + validates):
-In PowerShell, use `./convert-to-exec-deck.cmd`.
+Both assistants follow the same three-step pipeline:
 
-```bash
-convert-to-exec-deck "C:\path\to\dashboard.pdf" --assistant claude
-```
+### 1. Extract
+Parse the source file into per-slide PNG images and metadata.
 
-## GitHub Copilot Workflow
+### 2. Analyze
+The AI reads each dashboard image, extracts numbers, identifies trends, and generates analyst-grade insights following the [Insight Formula](#insight-formula).
 
-Copilot Chat (agent mode) runs the same pipeline — no API key needed.
-Just ask Copilot Chat:
-
-> Convert `C:\path\to\dashboard.pptx` to an executive deck
-
-Copilot reads `COPILOT.md` (via `.github/copilot-instructions.md`) and
-automatically runs the three-step workflow:
-
-1. **Extract** — `python convert_dashboard_claude.py --source "<path>" --prepare --assistant copilot`
-2. **Analyze** — Copilot reads images + text layers, generates insights, writes `temp/claude_insights.json`
-3. **Build** — `python convert_dashboard_claude.py --build --output <output>.pptx`
-
-Manual dependency install (auto-installed on first run):
-
-```bash
-pip install -r requirements-copilot.txt
-```
-
-See [COPILOT.md](COPILOT.md) for the full schema, insight formula, and quality guidelines.
+### 3. Build
+Assemble a polished 16:9 PPTX with SVG charts, insight headlines, executive summary, and recommendations.
 
 ---
 
-## Mode 1 — Quick Mode
+## Claude Workflow
 
-**Input:** PDF or PPTX export from Power BI
-**How it works:** Claude reads each dashboard page as an image and generates analyst-grade insights
+Single-command run (installs deps + converts + validates):
+
+```bash
+./convert-to-exec-deck.cmd "C:\path\to\dashboard.pdf" --assistant claude
+```
+
+Or from inside Claude Code:
 
 ```
 convert to an executive deck "C:\path\to\dashboard.pdf"
 ```
 
-**Get started:**
-
-```bash
-git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
-cd pbi-to-exec-deck
-claude
-```
-
 ![Demo](demo.gif)
 
-Then paste the command above with your file path. Output is saved as `dashboard_executive.pptx` (~3 minutes).
+Output is saved as `*_executive.pptx` (~3 minutes).
+
+---
+
+## GitHub Copilot Workflow
+
+Open the repo in VS Code and ask Copilot Chat (agent mode):
+
+> Convert `C:\path\to\dashboard.pptx` to an executive deck
+
+Copilot reads [COPILOT.md](COPILOT.md) (auto-discovered via [.github/copilot-instructions.md](.github/copilot-instructions.md)) and runs the three steps automatically:
+
+```bash
+# Step 1 — Extract (text layer + EasyOCR fallback for PPTX dashboard images)
+python convert_dashboard.py --source "<path>" --prepare --assistant copilot
+
+# Step 2 — Copilot reads images + OCR-enriched text, generates insights, writes JSON
+
+# Step 3 — Build
+python convert_dashboard.py --build --output "<output>.pptx"
+```
+
+### EasyOCR Fallback
+
+Power BI PPTX exports embed dashboards as full-page PNG screenshots — no extractable text. The pipeline automatically:
+
+1. Tries embedded text first (markitdown / python-pptx)
+2. Detects boilerplate output ("No alt text provided", chart type names)
+3. Falls back to **EasyOCR** to extract real numbers, KPIs, and labels from the images
+
+This ensures insights reference actual data (e.g. "150 Active Users, 39.7% Power Users") instead of describing chart types.
+
+See [COPILOT.md](COPILOT.md) for the full JSON schema, insight formula, chart specs, and quality guidelines.
+
+---
+
+## Supported Inputs
+
+| Input | Format | Data Source |
+|---|---|---|
+| **PDF export** | `.pdf` | AI reads page images |
+| **PPTX export** | `.pptx` | AI reads slide images + OCR text extraction |
+| **PBIP project** | `.pbip` | Live DAX queries via MCP (exact values) |
+| **PBIX file** | `.pbix` | Live DAX queries via MCP (exact values) |
 
 **How to export from Power BI:**
 - **PDF** — Power BI Desktop: `File → Export → Export to PDF`
@@ -78,82 +121,63 @@ Then paste the command above with your file path. Output is saved as `dashboard_
 
 ---
 
-## Mode 2 — Deep Analysis Mode
+## Deep Analysis Mode (PBIP / PBIX)
 
-**Input:** `.pbix` or `.pbip` source file
-**How it works:** Claude connects to the live Power BI Desktop model via MCP and queries exact values using DAX
+For `.pbip` or `.pbix` files, the tool connects to the live Power BI Desktop model via MCP and queries exact values using DAX — no visual estimation needed.
 
 > **Prefer `.pbip` over `.pbix` when you have the choice.**
-> PBIP stores the semantic model as plain-text TMDL files, so Claude can read every measure's DAX expression and understand exactly how each KPI is calculated. Modern `.pbix` files store the model as compressed binary — Claude gets the right numbers from DAX queries but has no visibility into the calculation logic behind them. To save as PBIP: in Power BI Desktop, `File → Save as` and choose the Power BI Project format.
+> PBIP stores the semantic model as plain-text TMDL files, so the assistant can read every measure's DAX expression and understand exactly how each KPI is calculated.
 
-### Step 1: Install the MCP server (one-time)
-
-From inside the repo with Claude Code running:
+### Setup (one-time)
 
 ```bash
-python setup_pbi_mcp.py
+python setup_pbi_mcp.py          # Download & register MCP server
+python setup_pbi_mcp.py --check  # Verify installation
 ```
 
-This downloads the official [microsoft/powerbi-modeling-mcp](https://github.com/microsoft/powerbi-modeling-mcp) server, extracts it to `C:\MCPServers\PowerBIModelingMCP\`, and registers it in `.mcp.json`. To verify:
-
-```bash
-python setup_pbi_mcp.py --check
-```
+This downloads the official [microsoft/powerbi-modeling-mcp](https://github.com/microsoft/powerbi-modeling-mcp) server and registers it in `.mcp.json`.
 
 > The MCP server runs locally and communicates only with Power BI Desktop on your machine — no data leaves your environment.
 
-### Step 2: Restart Claude Code
+### Run
 
-Claude Code only picks up newly registered MCP servers on startup. Exit and relaunch:
-
-```bash
-/exit
-claude
-```
-
-### Step 3: Open your report in Power BI Desktop
-
-The MCP connects to the running Desktop process to query the live model. **Power BI Desktop must be open with your report loaded before you run the conversion.**
-
-### Step 4: Run the conversion
-
-```
-convert to an executive deck "C:\path\to\report.pbix"
-```
+1. Open your report in Power BI Desktop
+2. Restart your assistant session (Claude Code: `/exit` → `claude`)
+3. Run the conversion:
 
 ```
 convert to an executive deck "C:\path\to\report.pbip"
 ```
 
-**Without MCP installed:** The tool still runs but falls back to image-only analysis (same as Mode 1). You'll see a clear message indicating this.
+**Without MCP installed:** The tool falls back to image-only analysis automatically.
 
 ---
 
-## What you get
+## What You Get
 
-Both modes produce the same output format:
-
-- **16:9 widescreen** slides
-- **SVG charts** matching the original visual types — bar, line, donut, heatmap, treemap, scatter, KPI cards, tables
+- **16:9 widescreen** slides with dark professional theme
+- **SVG charts** — bar, column, line, donut, KPI cards, tables, treemap, scatter, funnel, gauge
 - **Insight-driven headlines** that answer "so what?" for each dashboard page
 - **Executive summary** — 5 synthesized findings across all pages
 - **Action recommendations** — specific, data-grounded next steps
-
-| | Mode 1 (PDF/PPTX) | Mode 2 (PBIX/PBIP) |
-|---|---|---|
-| Data source | Screenshots | Live DAX queries |
-| Numbers | Visually read | Exact from model |
-| Measure logic | Unknown | Full DAX expressions |
-| Extra setup | None | MCP server |
+- **Constitution validation** — automated quality checks on the output
 
 ---
 
-## Example
+## Insight Formula
 
-**Raw dashboard numbers:**
+Every insight follows this format:
+
+**Headline:** `[Clear Takeaway Message]`
+
+**Insight:** `"[Bold punchy line, 6-8 words] || [Supporting evidence with specific data]"`
+
+**Example:**
+
+Raw dashboard numbers:
 > "1,275 active Copilot users", "134 Agent users"
 
-**Turned into analyst-grade insight:**
+Turned into analyst-grade insight:
 > "134 Agent users from 1,275 total (11%) — significant opportunity to expand automation adoption. HR Generalists at 140 actions/user are 3–4x above average: strong candidates to champion agent adoption org-wide."
 
 ---
@@ -162,13 +186,27 @@ Both modes produce the same output format:
 
 | File | Purpose |
 |---|---|
-| `convert_dashboard_claude.py` | Main entry point for all conversions |
-| `setup_pbi_mcp.py` | One-time MCP server setup for Mode 2 |
-| `lib/extraction/pbix_extractor.py` | PBIX ZIP extraction and screenshot handling |
+| `convert_dashboard.py` | Main entry point — extract, analyze, build |
+| `run_pipeline.py` | Single-command wrapper (deps + convert + validate) |
+| `convert-to-exec-deck.cmd` | Windows batch launcher for `run_pipeline.py` |
+| `check_setup.py` | Dependency validation (`--profile claude\|copilot`) |
+| `setup_pbi_mcp.py` | One-time MCP server setup for PBIP/PBIX mode |
+| **Extraction** | |
+| `lib/extraction/extractor.py` | Markitdown-based text + metric extraction |
+| `lib/extraction/text_layer_extractor.py` | PPTX/PDF text-layer enrichment |
+| `lib/extraction/ocr_extractor.py` | EasyOCR fallback for dashboard PNGs |
+| `lib/extraction/pdf_extractor.py` | PDF page rendering (PyMuPDF / pypdfium2) |
 | `lib/extraction/pbip_extractor.py` | PBIP folder parsing and DAX query generation |
-| `lib/rendering/chart_builder_mpl.py` | SVG chart rendering |
+| `lib/extraction/pbix_extractor.py` | PBIX ZIP extraction and screenshot handling |
+| **Rendering** | |
 | `lib/rendering/builder.py` | Slide layout and PPTX assembly |
+| `lib/rendering/chart_builder_mpl.py` | SVG chart rendering (matplotlib) |
+| `lib/rendering/validator.py` | Constitution compliance checker |
+| **Instructions** | |
 | `CLAUDE.md` | Full instructions for Claude's analysis workflow |
+| `COPILOT.md` | Full instructions for Copilot Chat workflow |
+| `.github/copilot-instructions.md` | VS Code auto-discovery for Copilot |
+| `Claude PowerPoint Constitution.md` | Quality standards and governance |
 
 ---
 

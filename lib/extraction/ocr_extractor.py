@@ -94,39 +94,134 @@ def text_layer_is_sufficient(text_layer: str, text_metrics: list) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# OCR extraction
+# OCR extraction — spatially-aware
 # ---------------------------------------------------------------------------
+
+# Type alias: each OCR result carries text, confidence, AND bounding box centre
+# so downstream functions can reason about spatial proximity.
+_OcrFragment = Tuple[str, float, Tuple[float, float]]   # (text, conf, (cx, cy))
+
 
 def ocr_slide_image(image_path: str) -> List[Tuple[str, float]]:
     """Run EasyOCR on a single slide image.
 
     Returns:
-        List of (text, confidence) tuples, sorted top-to-bottom by bounding box.
+        List of (text, confidence) tuples, sorted by *spatial reading order*
+        (clustered into rows by Y-position, then left-to-right within each row).
     """
     reader = _get_reader()
     results = reader.readtext(image_path)
 
-    # Sort by vertical position (top of bounding box)
-    results.sort(key=lambda r: r[0][0][1])
+    if not results:
+        return []
 
-    return [(text, confidence) for (_bbox, text, confidence) in results]
+    # Compute centre of each bounding box
+    enriched: List[_OcrFragment] = []
+    for bbox, text, confidence in results:
+        xs = [pt[0] for pt in bbox]
+        ys = [pt[1] for pt in bbox]
+        cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
+        enriched.append((text, confidence, (cx, cy)))
+
+    # ── Cluster into rows (fragments with similar Y are on the same line) ──
+    enriched.sort(key=lambda r: r[2][1])  # sort by cy
+    row_tolerance = _estimate_row_tolerance(enriched)
+    rows: List[List[_OcrFragment]] = []
+    current_row: List[_OcrFragment] = [enriched[0]]
+
+    for frag in enriched[1:]:
+        if abs(frag[2][1] - current_row[0][2][1]) <= row_tolerance:
+            current_row.append(frag)
+        else:
+            rows.append(current_row)
+            current_row = [frag]
+    rows.append(current_row)
+
+    # Sort each row left-to-right by cx
+    for row in rows:
+        row.sort(key=lambda r: r[2][0])
+
+    # Flatten back to ordered list
+    ordered = [frag for row in rows for frag in row]
+
+    # Store enriched fragments for spatial context (used by metrics/text builder)
+    _last_spatial_fragments.clear()
+    _last_spatial_fragments.extend(ordered)
+
+    return [(text, conf) for text, conf, _pos in ordered]
+
+
+# Module-level cache so _parse_metrics_from_ocr can access bounding boxes
+# without changing the public signature of ocr_slide_image.
+_last_spatial_fragments: List[_OcrFragment] = []
+
+
+def _estimate_row_tolerance(fragments: List[_OcrFragment]) -> float:
+    """Estimate the Y-distance that separates distinct rows.
+
+    Uses the median gap between consecutive fragments as a baseline.
+    Fragments within 0.6× the median line-height are on the same row.
+    Falls back to 20 px if the image has very few fragments.
+    """
+    if len(fragments) < 2:
+        return 20.0
+
+    ys = sorted(f[2][1] for f in fragments)
+    gaps = [ys[i + 1] - ys[i] for i in range(len(ys) - 1) if ys[i + 1] - ys[i] > 0]
+    if not gaps:
+        return 20.0
+
+    gaps.sort()
+    median_gap = gaps[len(gaps) // 2]
+    return max(median_gap * 0.6, 8.0)
+
+
+def _spatial_context(fragments: List[_OcrFragment], idx: int) -> str:
+    """Return context from the SAME ROW as the target fragment.
+
+    This ensures a number is paired with labels that are actually beside it
+    on the dashboard, not just vertically adjacent.
+    """
+    if not fragments or idx >= len(fragments):
+        return ""
+
+    target_cy = fragments[idx][2][1]
+    row_tol = _estimate_row_tolerance(fragments) if len(fragments) > 1 else 20.0
+
+    same_row = [
+        f[0] for f in fragments
+        if abs(f[2][1] - target_cy) <= row_tol
+    ]
+
+    return " | ".join(same_row)
 
 
 def _parse_metrics_from_ocr(ocr_results: List[Tuple[str, float]]) -> List[Dict]:
-    """Extract structured metrics from OCR text fragments."""
+    """Extract structured metrics from OCR text fragments.
+
+    Uses spatial bounding-box data (if available) to build context from the
+    same visual row rather than just vertical adjacency — preventing
+    misattribution of numbers to wrong labels.
+    """
     metrics = []
     pct_re = re.compile(r"(-?\d+(?:\.\d+)?)\s*%")
     num_re = re.compile(r"(-?\d+(?:,\d{3})*(?:\.\d+)?)")
 
+    # Prefer spatial fragments; fall back to positional-only if unavailable
+    spatial = _last_spatial_fragments if _last_spatial_fragments else None
     all_texts = [text for text, _conf in ocr_results]
 
     for i, (text, conf) in enumerate(ocr_results):
         if conf < 0.3:
             continue
 
+        context = (
+            _spatial_context(spatial, i) if spatial
+            else _context_window(all_texts, i)
+        )
+
         # Look for percentages
         for m in pct_re.finditer(text):
-            context = _context_window(all_texts, i)
             metrics.append({
                 "value": m.group(0),
                 "numeric_value": float(m.group(1)),
@@ -142,7 +237,6 @@ def _parse_metrics_from_ocr(ocr_results: List[Tuple[str, float]]) -> List[Dict]:
                 val = float(raw)
             except ValueError:
                 continue
-            context = _context_window(all_texts, i)
             metrics.append({
                 "value": m.group(0),
                 "numeric_value": val,
@@ -168,7 +262,7 @@ def _extract_key_phrases(ocr_results: List[Tuple[str, float]]) -> List[str]:
 
 
 def _context_window(texts: List[str], idx: int, window: int = 2) -> str:
-    """Return surrounding text fragments as context for a metric."""
+    """Return surrounding text fragments as context for a metric (fallback)."""
     start = max(0, idx - window)
     end = min(len(texts), idx + window + 1)
     return " | ".join(texts[start:end])
@@ -177,6 +271,38 @@ def _context_window(texts: List[str], idx: int, window: int = 2) -> str:
 # ---------------------------------------------------------------------------
 # Public API — enrich slides with OCR data
 # ---------------------------------------------------------------------------
+
+def _build_spatial_text(fragments: List[_OcrFragment]) -> str:
+    """Build readable text from OCR fragments using spatial row grouping.
+
+    Fragments on the same visual row are joined with " · " (middle dot)
+    and rows are separated by newlines. This preserves the dashboard layout
+    so the assistant can correctly associate numbers with their labels.
+    """
+    if not fragments:
+        return ""
+
+    row_tol = _estimate_row_tolerance(fragments)
+    rows: List[List[_OcrFragment]] = []
+    current_row: List[_OcrFragment] = [fragments[0]]
+
+    for frag in fragments[1:]:
+        if abs(frag[2][1] - current_row[0][2][1]) <= row_tol:
+            current_row.append(frag)
+        else:
+            rows.append(current_row)
+            current_row = [frag]
+    rows.append(current_row)
+
+    lines = []
+    for row in rows:
+        row.sort(key=lambda r: r[2][0])
+        texts = [f[0] for f in row if f[1] >= 0.3]
+        if texts:
+            lines.append(" · ".join(texts))
+
+    return "\n".join(lines)
+
 
 def enrich_slides_with_ocr(slides: List[Dict], force: bool = False) -> int:
     """Run OCR on slides that lack sufficient text-layer data.
@@ -208,8 +334,13 @@ def enrich_slides_with_ocr(slides: List[Dict], force: bool = False) -> int:
 
         ocr_results = ocr_slide_image(image_path)
 
-        # Build full text from OCR
-        ocr_text = "\n".join(text for text, _conf in ocr_results if _conf >= 0.3)
+        # Build full text from OCR — use spatial row grouping if available
+        if _last_spatial_fragments:
+            ocr_text = _build_spatial_text(_last_spatial_fragments)
+        else:
+            ocr_text = "\n".join(
+                text for text, _conf in ocr_results if _conf >= 0.3
+            )
 
         # Merge: prefer OCR text if existing text_layer was poor
         if not text_layer_is_sufficient(text_layer, text_metrics):

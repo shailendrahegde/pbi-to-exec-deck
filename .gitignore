@@ -43,6 +43,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Virtual environments
+.venv/
+venv/
+env/
+
+# EasyOCR model cache (Copilot workflow)
+.EasyOCR/
+
 # Example outputs (users should generate their own)
 *Executive Analytics*.pptx
 *_Executive_Deck.pptx

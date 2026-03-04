@@ -28,7 +28,7 @@ When a user requests dashboard conversion, you orchestrate **three steps**:
 ### Step 1: Extract
 
 ```bash
-python convert_dashboard_claude.py --source "<path>" --prepare --assistant copilot
+python convert_dashboard.py --source "<path>" --prepare --assistant copilot
 ```
 
 This extracts slide images to `temp/`, parses titles and structure, and creates `temp/analysis_request.json` with slide metadata and text-layer data.
@@ -41,12 +41,12 @@ This extracts slide images to `temp/`, parses titles and structure, and creates 
 2. For each slide, read the dashboard image (`temp/slide_N.png`)
 3. Use the `text_layer` and `text_metrics` fields for extractable text/numbers
 4. Generate analyst-grade insights following the formula below
-5. Write results to `temp/claude_insights.json`
+5. Write results to `temp/insights.json`
 
 ### Step 3: Build
 
 ```bash
-python convert_dashboard_claude.py --build --output "<output>.pptx"
+python convert_dashboard.py --build --output "<output>.pptx"
 ```
 
 This loads your insights, creates professional slides (16:9 widescreen), embeds dashboard images with insights, and validates against the Constitution.
@@ -286,7 +286,7 @@ When using charts, the `insights` field is a **list of objects** (each with `"te
 }
 ```
 
-**Save to:** `temp/claude_insights.json`
+**Save to:** `temp/insights.json`
 
 ---
 
@@ -312,7 +312,7 @@ When a user has a `.pbip` Power BI project open in Power BI Desktop, this
 path queries the **live in-memory model** directly — no screenshots needed.
 
 ```bash
-python convert_dashboard_claude.py --source "MyReport.pbip" --prepare --assistant copilot
+python convert_dashboard.py --source "MyReport.pbip" --prepare --assistant copilot
 ```
 
 ### What's different from the standard workflow
@@ -365,11 +365,11 @@ CALCULATETABLE(
 - Follow the same insight formula as the standard workflow
 - Reference measure names in parentheses: "47.3% completion rate ([Project Completion Rate])"
 
-**Step 6: Write insights to `temp/claude_insights.json`** (same format as always)
+**Step 6: Write insights to `temp/insights.json`** (same format as always)
 
 Then build:
 ```bash
-python convert_dashboard_claude.py --build --output "<output>.pptx"
+python convert_dashboard.py --build --output "<output>.pptx"
 ```
 
 ### If DAX queries return no data
@@ -459,6 +459,26 @@ Avoid:
 - Verbose explanations: Keep insights to 1-2 sentences max
 - Technical jargon: Use business language
 
+### ❌ DON'T: Make Generic / Vanilla Statements
+
+An executive reading your deck should never think "I already knew that" or "so what?" Generic observations destroy credibility and waste slide real-estate.
+
+**The "So What" test:** Before writing any headline or insight, ask: *"Would a VP forward this bullet to their boss?"* If the answer is no, rewrite it.
+
+**Vanilla patterns to NEVER use:**
+- ❌ "There are 1,275 active users" → ✅ "1,275 active users represent 68% penetration — 480-seat expansion opportunity remains"
+- ❌ "Platform shows engagement" → ✅ "Power users average 33 actions/week — 2.5× the org baseline"
+- ❌ "Usage varies by department" → ✅ "Operations outpaces Marketing 3:1 on weekly actions — replicate their onboarding playbook"
+- ❌ "Four groups form the org structure" → ✅ "Top quartile (4 teams, 38% of users) generates 71% of all Copilot actions — concentrate enablement here"
+- ❌ "The report covers AI skills" → ✅ "Business Management dominates confirmed skills at 45% — AI-specific skill gaps signal training opportunity"
+- ❌ "Skills are distributed across categories" → ✅ "3 of 8 skill categories account for 80% of confirmations — focus L&D investment on the long tail"
+
+**Anti-vanilla checklist for every headline:**
+1. Does it contain a specific number? (If not, add one)
+2. Does it imply an action or decision? (If not, add "→ [implication]")
+3. Could it apply to ANY dashboard? (If yes, make it specific to THIS data)
+4. Would an executive remember it tomorrow? (If not, sharpen it)
+
 ### ❌ DON'T: Force Insights Without Data
 
 If a dashboard page has no numbers or is blank:
@@ -488,7 +508,9 @@ If a dashboard page has no numbers or is blank:
 
 ## Quality Validation
 
-After generating insights, verify:
+After generating insights, perform these mandatory checks:
+
+### Checklist
 
 ✅ Every headline has specific number (not "some users" or "many")
 ✅ Number units match exactly (13 vs 13K vs 13M - use what's shown)
@@ -497,8 +519,39 @@ After generating insights, verify:
 ✅ Tone is friendly (opportunities, not failures)
 ✅ Focus on action (what to do, not just what is)
 ✅ No forced insights (if no data, mark "Insufficient data")
+✅ No vanilla statements (every headline passes the "would a VP forward this?" test)
 ✅ Executive summary synthesizes ALL pages (not just first slide)
 ✅ Recommendations are actionable (specific actions, not vague suggestions)
+
+### Chart Coverage Self-Check (MANDATORY)
+
+Before writing `temp/insights.json`, verify that **every slide with quantitative data has at least one chart spec**. Slides without chart specs fall back to pasting the raw screenshot — which defeats the purpose of the executive deck.
+
+**For each slide ask:** Does this page show numbers, bars, lines, donuts, tables, or KPIs?
+- **YES** → At least one insight MUST carry a `"chart"` key with extracted data
+- **NO** (text-only guidance page) → OK to omit chart; use plain string insights
+
+**Common chart-miss patterns:**
+- KPI cards often get described in text but not encoded as `"kpi"` or `"kpi_row"` charts
+- Tables get summarised as text instead of encoded as `"table"` chart spec
+- Small bar/column charts at the bottom of a page are overlooked
+
+The build step now runs `verify_insights()` automatically and will print warnings for any slide missing a chart spec. You can also run verification standalone:
+```bash
+python convert_dashboard.py --verify
+```
+
+### OCR Cross-Verification (when `ocr_used: true`)
+
+When `analysis_request.json` marks a slide with `"ocr_used": true`, the `text_layer` was generated by EasyOCR — not from embedded text. OCR text is spatially grouped by row, but label-to-number associations can still be ambiguous.
+
+**MANDATORY:** For every number you cite from an OCR-enriched slide, verify the number-to-label pairing by reading the actual image. Do NOT blindly trust `text_metrics[].context` — cross-check it visually.
+
+**Example of what goes wrong:**
+- OCR `text_layer`: `Business Management · 151 · AI Skills · 89`
+- If you read left-to-right: 151 belongs to Business Management, 89 to AI Skills
+- If you just grab "151" and see "AI Skills" nearby → WRONG: "151 people have AI Skills"
+- **Always verify against the image** before attributing a number to a label
 
 ---
 
@@ -510,7 +563,7 @@ After generating insights, verify:
 
 1. Run extract command:
    ```bash
-   python convert_dashboard_claude.py --source wpp22.pptx --prepare --assistant copilot
+   python convert_dashboard.py --source wpp22.pptx --prepare --assistant copilot
    ```
 
 2. Read analysis request and view images:
@@ -523,11 +576,11 @@ After generating insights, verify:
 
 3. Generate concise, friendly insights for each slide following the formula
 
-4. Save insights JSON to `temp/claude_insights.json`
+4. Save insights JSON to `temp/insights.json`
 
 5. Build final presentation:
    ```bash
-   python convert_dashboard_claude.py --build --output wpp22_executive.pptx
+   python convert_dashboard.py --build --output wpp22_executive.pptx
    ```
 
 6. Verify output and report success
@@ -539,7 +592,7 @@ After generating insights, verify:
 
 ## Files Reference
 
-- `convert_dashboard_claude.py` - Main conversion orchestrator
+- `convert_dashboard.py` - Main conversion orchestrator
 - `Claude PowerPoint Constitution.md` - Quality standards and governance
 - `Example-Storyboard-Analytics.pptx` - Visual template reference (use for styling)
 - `lib/rendering/builder.py` - Slide rendering (16:9 format)

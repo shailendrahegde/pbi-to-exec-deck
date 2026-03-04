@@ -19,14 +19,14 @@ The argument `$ARGUMENTS` is the path to the source file.
 Run the extractor to pull out dashboard images and metadata:
 
 ```bash
-python convert_dashboard_claude.py --source $ARGUMENTS --prepare
+python convert_dashboard.py --source $ARGUMENTS --prepare
 ```
 
 If `--prepare` fails because dependencies are missing, install them first:
 
 ```bash
 pip install -r requirements.txt
-python convert_dashboard_claude.py --source $ARGUMENTS --prepare
+python convert_dashboard.py --source $ARGUMENTS --prepare
 ```
 
 ### Step 2 — Read the analysis request
@@ -69,12 +69,27 @@ Also generate across all slides:
 
 ### Step 4 — Save insights
 
-Write all insights to `temp/claude_insights.json` following the schema in CLAUDE.md.
+Write all insights to `temp/insights.json` following the schema in CLAUDE.md.
+
+### Step 4b — Verify (MANDATORY before build)
+
+Run the verification step to catch missing charts, vanilla headlines, and other issues:
+
+```bash
+python convert_dashboard.py --verify
+```
+
+If warnings appear:
+- **Missing chart spec**: Go back and add a `"chart"` key to at least one insight on that slide
+- **Generic headline**: Rewrite the headline to pass the "Would a VP forward this?" test
+- **Slide count mismatch**: Check if you missed analysing any dashboard pages
+
+Fix issues in `temp/insights.json` and re-run `--verify` until clean.
 
 ### Step 5 — Build
 
 ```bash
-python convert_dashboard_claude.py --build
+python convert_dashboard.py --build
 ```
 
 The output file is saved as `dashboard_executive.pptx` in the same directory as the source file (or use `--output` to specify a custom path).

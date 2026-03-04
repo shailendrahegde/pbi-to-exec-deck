@@ -1,7 +1,7 @@
 """
 PDF Extraction Module
 
-Extracts pages from PDF files as PNG images for Claude analysis.
+Extracts pages from PDF files as PNG images for analysis.
 Mirrors the PPTX extraction workflow for consistent processing.
 """
 
@@ -356,9 +356,9 @@ def classify_slide_type(title: str) -> str:
         return 'general'
 
 
-def prepare_pdf_for_claude_analysis(source_path: str, use_text_layer: bool = False) -> str:
+def prepare_pdf_for_analysis(source_path: str, use_text_layer: bool = False) -> str:
     """
-    Prepare PDF pages for Claude analysis (mirrors prepare_for_claude_analysis for PPTX).
+    Prepare PDF pages for analysis (mirrors prepare_for_analysis for PPTX).
 
     Extracts each page as PNG image and creates analysis request JSON.
     NOTE: PDF exports typically have dashboard content on first page, so we include all pages.
@@ -371,7 +371,7 @@ def prepare_pdf_for_claude_analysis(source_path: str, use_text_layer: bool = Fal
         Path to analysis_request.json file
     """
     print("=" * 70)
-    print("PREPARING PDF PAGES FOR CLAUDE ANALYSIS")
+    print("PREPARING PDF PAGES FOR ANALYSIS")
     print("=" * 70)
 
     pdf_doc = None

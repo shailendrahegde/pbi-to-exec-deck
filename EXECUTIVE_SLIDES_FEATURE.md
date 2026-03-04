@@ -88,7 +88,7 @@ def add_recommendations_slide(self, recommendations: List[str]):
 - Checks for `__recommendations__` key and renders at the end
 - Maintains backward compatibility (slides optional)
 
-### 4. Updated Orchestration (convert_dashboard_claude.py)
+### 4. Updated Orchestration (convert_dashboard.py)
 
 **Modified build_presentation_from_insights():**
 - Extracts `executive_summary` from insights_data
@@ -161,7 +161,7 @@ best practices for departments below 50 actions/user baseline"
 
 **Code:**
 - `lib/rendering/builder.py` - Added 2 new slide methods, updated render_presentation
-- `convert_dashboard_claude.py` - Updated to extract and pass executive summary/recommendations
+- `convert_dashboard.py` - Updated to extract and pass executive summary/recommendations
 
 **Tests:**
 - `tests/test_executive_slides.py` - 4 comprehensive tests (NEW)
@@ -177,7 +177,7 @@ best practices for departments below 50 actions/user baseline"
 
 **For Users:**
 - No change to workflow
-- Run same command: `python convert_dashboard_claude.py --source dashboard.pdf --auto`
+- Run same command: `python convert_dashboard.py --source dashboard.pdf --auto`
 - Output now includes executive summary and recommendations automatically
 
 ## Impact

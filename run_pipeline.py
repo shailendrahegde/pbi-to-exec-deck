@@ -2,7 +2,7 @@
 """
 One-command pipeline: install deps, run conversion, verify output.
 
-This wraps check_setup.py and convert_dashboard_claude.py.
+This wraps check_setup.py and convert_dashboard.py.
 """
 
 import argparse
@@ -86,7 +86,7 @@ def main() -> int:
 
     convert_cmd = [
         sys.executable,
-        "convert_dashboard_claude.py",
+        "convert_dashboard.py",
         "--source",
         args.source,
         "--assistant",

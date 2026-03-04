@@ -2,7 +2,7 @@
 PBIP Extraction Module
 
 Extracts report pages, semantic model metadata, and builds DAX queries
-for Power BI PBIP projects. Enables Claude to query the live in-memory
+for Power BI PBIP projects. Enables the assistant to query the live in-memory
 model via the powerbi-modeling MCP instead of reading screenshots.
 """
 
@@ -1350,7 +1350,7 @@ def _extract_companion_images(pbip_path: Path, pbip_root: Path,
 # 5. Main entry point
 # ---------------------------------------------------------------------------
 
-def prepare_pbip_for_claude_analysis(pbip_path: str) -> str:
+def prepare_pbip_for_analysis(pbip_path: str) -> str:
     """
     Main entry point. Accepts path to a .pbip file or its parent folder.
 
@@ -1361,7 +1361,7 @@ def prepare_pbip_for_claude_analysis(pbip_path: str) -> str:
     Returns path to analysis_request.json.
     """
     print("=" * 70)
-    print("PREPARING PBIP PROJECT FOR CLAUDE ANALYSIS")
+    print("PREPARING PBIP PROJECT FOR ANALYSIS")
     print("=" * 70)
 
     pbip_path = Path(pbip_path)

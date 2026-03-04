@@ -101,7 +101,7 @@ def main():
         print("[OK] All dependencies installed! You're ready to go.")
         print()
         print("Next step: Run the converter")
-        print("  python convert_dashboard_claude.py --source your_dashboard.pdf")
+        print("  python convert_dashboard.py --source your_dashboard.pdf")
     else:
         print("[X] Setup incomplete. Please install missing dependencies:")
         if args.profile == "copilot":

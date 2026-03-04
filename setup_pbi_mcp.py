@@ -194,7 +194,7 @@ def print_already_configured(exe_path: Path):
         "To run PBIP analysis:",
         "  1. Open Power BI Desktop with your .pbip report",
         "  2. Claude Code automatically connects via MCP at startup",
-        "  3. python convert_dashboard_claude.py --source report.pbip",
+        "  3. python convert_dashboard.py --source report.pbip",
         "",
         "Run with --force to reinstall."
     )
@@ -214,7 +214,7 @@ def print_next_steps():
         "     Close and relaunch, or: /exit then re-open",
         "",
         "Then run:",
-        "  python convert_dashboard_claude.py --source report.pbip",
+        "  python convert_dashboard.py --source report.pbip",
         "",
         "Claude will query exact DAX values directly from your model."
     )

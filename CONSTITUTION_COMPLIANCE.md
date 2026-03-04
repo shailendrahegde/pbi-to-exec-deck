@@ -1,6 +1,6 @@
 # Constitution & Template Compliance Verification
 
-This document verifies that `convert_dashboard_claude.py` follows both:
+This document verifies that `convert_dashboard.py` follows both:
 1. **Claude PowerPoint Constitution v1.7**
 2. **Example-Storyboard-Analytics.pptx** template reference
 
@@ -117,7 +117,7 @@ WHITE = RGBColor(255, 255, 255)      # For backgrounds
 
 ### Step 1: Prepare (Deterministic)
 ```python
-python convert_dashboard_claude.py --source "dashboard.pptx" --prepare
+python convert_dashboard.py --source "dashboard.pptx" --prepare
 ```
 **Constitution Compliance:**
 - ✅ Extracts dashboard images (Section 8: Images from source only)
@@ -146,7 +146,7 @@ Insight 3: Actionable recommendation
 
 ### Step 3: Build (Deterministic)
 ```python
-python convert_dashboard_claude.py --build --output "result.pptx"
+python convert_dashboard.py --build --output "result.pptx"
 ```
 **Constitution Compliance:**
 - ✅ Creates 16:9 slides (Section 11: Template dimensions)
@@ -203,7 +203,7 @@ Summary:
 
 ✅ **FULLY COMPLIANT**
 
-The `convert_dashboard_claude.py` execution path:
+The `convert_dashboard.py` execution path:
 1. ✅ Follows all Constitution v1.7 rules (Sections 2-12)
 2. ✅ Matches Example-Storyboard-Analytics.pptx template
 3. ✅ Enforces insight quality (Section 5A)
