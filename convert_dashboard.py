@@ -849,8 +849,13 @@ def verify_insights(insights_file: str = "temp/insights.json",
     return {"passed": passed, "warnings": warnings, "errors": errors}
 
 
-def build_presentation_from_insights(source_path, output_path, insights_file):
-    """Build final presentation using Claude's insights"""
+def build_presentation_from_insights(source_path, output_path, insights_file, *, vector_charts=False):
+    """Build final presentation using Claude's insights.
+
+    Args:
+        vector_charts: If True, use matplotlib vector charts instead of PBI screenshots.
+                       Default is False (screenshots).
+    """
 
     print("\n" + "=" * 70)
     print("BUILDING FINAL PRESENTATION")
@@ -896,7 +901,8 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
                     source_numbers=slide_insight.get('numbers_used', [])
                 )
 
-    # Add executive summary, recommendations, and deck title as special keys
+    # Add executive summary, recommendations, deck title, and rendering mode as special keys
+    insights['__vector_charts__'] = vector_charts
     if 'executive_summary' in insights_data:
         insights['__executive_summary__'] = insights_data['executive_summary']
     if 'recommendations' in insights_data:
@@ -907,8 +913,9 @@ def build_presentation_from_insights(source_path, output_path, insights_file):
         insights['__deck_subtitle__'] = insights_data['deck_subtitle']
 
     # Render presentation
-    print(f"\nRendering presentation...")
-    render_presentation(source_path, insights, output_path)
+    vector_charts = insights_data.get('__vector_charts__', False)
+    print(f"\nRendering presentation... (mode: {'vector charts' if vector_charts else 'PBI screenshots'})")
+    render_presentation(source_path, insights, output_path, vector_charts=vector_charts)
 
     print(f"\nOK Created: {output_path}")
 
@@ -952,47 +959,56 @@ def generate_output_filename(source_path):
 
 def main():
     parser = argparse.ArgumentParser(
+        prog='convert_dashboard.py',
         description='Convert Power BI dashboards to executive presentations',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Single command (automatic workflow):
-  python convert_dashboard.py --source dashboard.pptx
+  # Default (PBI screenshots):
+  python convert_dashboard.py "dashboard.pbip"
 
-  # With PDF input:
-  python convert_dashboard.py --source dashboard.pdf
+  # Vector charts mode:
+  python convert_dashboard.py "dashboard.pbip" --vector-charts
 
-    # Use Copilot Chat (text-layer for PPTX/PDF):
-    python convert_dashboard.py --source dashboard.pdf --assistant copilot
+  # Custom output name:
+  python convert_dashboard.py "dashboard.pptx" --output executive.pptx
 
-  # Auto mode (non-interactive, for Claude Code):
-  python convert_dashboard.py --source dashboard.pptx --auto
-
-  # With custom output name:
-  python convert_dashboard.py --source dashboard.pptx --output executive.pptx
-
-  # Manual workflow (step-by-step):
-  python convert_dashboard.py --source dashboard.pptx --prepare
+  # Manual two-step workflow:
+  python convert_dashboard.py "dashboard.pptx" --prepare
   python convert_dashboard.py --build --output executive.pptx
+  python convert_dashboard.py --build --output executive.pptx --vector-charts
 """
     )
 
-    parser.add_argument('--source', help='Source PowerPoint, PDF, or PBIP file/directory')
+    parser.add_argument('source', nargs='?', default=None,
+                       help='Source PowerPoint, PDF, or PBIP file/directory')
     parser.add_argument('--output', help='Output PowerPoint file (default: source_executive.pptx)')
     parser.add_argument('--prepare', action='store_true',
-                       help='Prepare slides for Claude analysis (Step 1 only)')
+                       help='Prepare slides for analysis (Step 1 only)')
     parser.add_argument('--build', action='store_true',
-                       help='Build final presentation from Claude insights (Step 3 only)')
+                       help='Build final presentation from insights (Step 3 only)')
     parser.add_argument('--verify', action='store_true',
                        help='Verify insights JSON for missing charts, weak headlines, etc.')
     parser.add_argument('--insights', default='temp/insights.json',
                        help='Path to insights JSON (default: temp/insights.json)')
     parser.add_argument('--auto', action='store_true',
                        help='Auto mode: skip interactive prompt (for non-interactive environments)')
+    parser.add_argument('--vector-charts', action='store_true',
+                       help='Use matplotlib vector charts instead of PBI page screenshots (default: screenshots)')
     parser.add_argument('--context', default=None,
                        help='Optional analysis focus injected into the prompt, e.g. "spotlight Group A"')
     parser.add_argument('--assistant', default='auto', choices=['claude', 'copilot', 'auto'],
                        help='Which assistant to use for insights (claude, copilot, auto)')
+
+    # Support legacy --source flag (maps to positional)
+    # Parse known args first to handle --source gracefully
+    args, remaining = parser.parse_known_args()
+    if not args.source and remaining:
+        # Check for legacy --source
+        for i, arg in enumerate(remaining):
+            if arg == '--source' and i + 1 < len(remaining):
+                args.source = remaining[i + 1]
+                break
 
     args = parser.parse_args()
 
@@ -1062,7 +1078,8 @@ Examples:
         print("\n" + "=" * 70)
         print("STEP 3: BUILDING PRESENTATION")
         print("=" * 70)
-        build_presentation_from_insights(args.source, output_path, args.insights)
+        build_presentation_from_insights(args.source, output_path, args.insights,
+                                       vector_charts=getattr(args, 'vector_charts', False))
 
         print("\n" + "=" * 70)
         print("CONVERSION COMPLETE!")
@@ -1101,7 +1118,8 @@ Examples:
         # Auto-generate output filename if not provided
         output_path = args.output or generate_output_filename(source_path)
 
-        build_presentation_from_insights(source_path, output_path, args.insights)
+        build_presentation_from_insights(source_path, output_path, args.insights,
+                                       vector_charts=getattr(args, 'vector_charts', False))
 
     else:
         parser.print_help()

@@ -474,6 +474,131 @@ class SlideBuilder:
             run.font.bold  = bold
             run.font.color.rgb = base_color
 
+    def add_screenshot_insight_slide(
+        self,
+        slide_number: int,
+        headline: str,
+        bullet_points: List[BulletPoint],
+        screenshot_path: str,
+    ):
+        """
+        Screenshot + Commentary layout — embeds the PBI page screenshot on the
+        left with insight blocks stacked on the right.
+
+        Layout:
+          Headline  full-width  (Pt 20)
+          ┌──────────────────┐ ┌──────────────────┐
+          │                  │ │ • Insight 1       │
+          │   PBI Screenshot │ │ • Insight 2       │
+          │   (7.50 × 4.56") │ │ • Insight 3       │
+          │                  │ │                   │
+          └──────────────────┘ └──────────────────┘
+          Footer
+        """
+        from pathlib import Path
+
+        MARGIN   = Inches(0.25)
+        USABLE_W = self.style.SLIDE_WIDTH - 2 * MARGIN  # 12.833"
+
+        slide_layout = self.prs.slide_layouts[6]  # Blank
+        slide = self.prs.slides.add_slide(slide_layout)
+
+        # ── Headline (Pt 20) ────────────────────────────────────────────────
+        hl_box = slide.shapes.add_textbox(MARGIN, Inches(0.10), USABLE_W, Inches(0.65))
+        hl_tf  = hl_box.text_frame
+        hl_tf.word_wrap = True
+        hl_tf.paragraphs[0].text = headline
+        self._style_text(hl_tf, font_size=Pt(20), bold=True,
+                         color=self.style.DARK_BLUE)
+
+        # ── Screenshot placement ────────────────────────────────────────────
+        CONTENT_TOP = Inches(0.85)
+        GAP         = Inches(0.25)
+        SS_W        = Inches(7.50)
+
+        # Calculate height preserving native PBI aspect ratio
+        try:
+            img = Image.open(screenshot_path)
+            img = _normalize_image_orientation(img)
+            ss_aspect = img.size[0] / img.size[1]
+        except Exception:
+            ss_aspect = 1424 / 866  # fallback PBI default
+
+        SS_H = int(SS_W / ss_aspect) if ss_aspect else Inches(4.56)
+
+        # Cap height so it doesn't exceed content area
+        MAX_SS_H = Inches(5.80)
+        if SS_H > MAX_SS_H:
+            SS_H = MAX_SS_H
+            SS_W = int(SS_H * ss_aspect)
+
+        # Place screenshot image with border
+        img_stream = io.BytesIO()
+        img.save(img_stream, format='PNG')
+        img_stream.seek(0)
+
+        pic = slide.shapes.add_picture(img_stream, MARGIN, CONTENT_TOP, SS_W, SS_H)
+        pic.line.color.rgb = self.style.ACCENT_BLUE
+        pic.line.width = Pt(1)
+
+        # ── Insight blocks on the right ─────────────────────────────────────
+        INS_LEFT     = MARGIN + SS_W + GAP             # ~8.00"
+        INS_W        = USABLE_W - SS_W - GAP           # ~5.08"
+        BLOCK_H      = Inches(1.90)
+        ACCENT_BAR_W = Inches(0.05)
+        TEXT_INDENT  = Inches(0.12)
+        TEXT_W       = INS_W - ACCENT_BAR_W - TEXT_INDENT - Inches(0.05)
+
+        for i, bp in enumerate(bullet_points[:3]):
+            block_top = CONTENT_TOP + i * BLOCK_H
+
+            # Left accent bar
+            bar = slide.shapes.add_shape(
+                1,
+                INS_LEFT, block_top + Inches(0.05),
+                ACCENT_BAR_W, BLOCK_H - Inches(0.10)
+            )
+            bar.fill.solid()
+            bar.fill.fore_color.rgb = self.style.ACCENT_BLUE
+            bar.line.fill.background()
+
+            # Text box
+            tb = slide.shapes.add_textbox(
+                INS_LEFT + ACCENT_BAR_W + TEXT_INDENT, block_top,
+                TEXT_W, BLOCK_H
+            )
+            tf = tb.text_frame
+            tf.word_wrap = True
+
+            parts     = [s.strip() for s in bp.text.split('||', 1)]
+            bold_line = parts[0]
+            detail    = parts[1] if len(parts) > 1 else ""
+
+            # Bold line with number highlighting (Pt 16)
+            p = tf.paragraphs[0]
+            self._add_run_with_number_highlight(
+                p, f"\u2022 {bold_line}", Pt(16), self.style.DARK_BLUE
+            )
+            p.space_after = Pt(5)
+
+            # Detail (Pt 12, DARK_GRAY)
+            if detail:
+                p2 = tf.add_paragraph()
+                p2.text = detail
+                self._style_paragraph(p2, font_size=Pt(12),
+                                      color=self.style.DARK_GRAY)
+
+        # ── Footer ──────────────────────────────────────────────────────────
+        footer_box = slide.shapes.add_textbox(
+            MARGIN, Inches(7.08), USABLE_W, Inches(0.25))
+        ff = footer_box.text_frame
+        ff.paragraphs[0].text = "AI generated. Verify before sharing"
+        self._style_text(ff, font_size=Pt(8), color=self.style.DARK_GRAY,
+                         alignment=PP_ALIGN.CENTER)
+
+        self._add_bottom_accent_line(slide)
+        return slide
+
     def add_polished_chart_slide(
         self,
         slide_number: int,
@@ -1059,7 +1184,9 @@ def extract_slide_image(source_prs: Presentation, slide_number: int) -> Optional
 def render_presentation(
     source_path: str,
     insights: Dict[str, Insight],
-    output_path: str
+    output_path: str,
+    *,
+    vector_charts: bool = False
 ):
     """
     Main entry point: Render executive presentation.
@@ -1069,6 +1196,8 @@ def render_presentation(
         source_path: Path to source file (.pptx or .pdf)
         insights: Dictionary of slide titles to Insights
         output_path: Path for output PowerPoint
+        vector_charts: If True, use matplotlib vector charts instead of PBI
+                       page screenshots (default: False = screenshots)
     """
     file_type = Path(source_path).suffix.lower()
 
@@ -1101,11 +1230,10 @@ def render_presentation(
     # Add content slides
     slide_mapping = {}  # Track which source slides we've processed
 
-    # For PDF sources, iterate through insights directly (no source slides to iterate)
+    # For PDF/PBIP sources, iterate through insights directly
     # For PPTX sources, iterate through source slides as before
     if source_images_map is not None:
-        # PDF workflow: Use temp/ images and insights mapping
-        # Load analysis request once (not in loop)
+        # PDF/PBIP workflow: Use temp/ images and insights mapping
         import json
         slide_info_map = {}
         try:
@@ -1115,6 +1243,11 @@ def render_presentation(
                     slide_info_map[slide_info['slide_number']] = slide_info
         except Exception as e:
             print(f"  WARNING: Could not load analysis request: {e}")
+
+        # Detect PBIP/PBIX source → prefer page screenshots unless --vector-charts
+        # Read the flag from insights dict (threaded from CLI)
+        use_vector = insights.get('__vector_charts__', vector_charts)
+        use_screenshots = (file_type in ('.pbip', '.pbix') or Path(source_path).is_dir()) and not use_vector
 
         # Process insights - iterate by slide number for guaranteed order
         for slide_num in sorted(source_images_map.keys()):
@@ -1131,7 +1264,6 @@ def render_presentation(
                 insight = insights.get(title)
 
                 if not insight:
-                    # Try without special characters if exact match fails
                     import re
                     title_clean = re.sub(r'[^\w\s]', '', title).strip()
                     for key, val in insights.items():
@@ -1140,38 +1272,51 @@ def render_presentation(
                             break
 
             if insight:
-                # Load source image
-                source_image = None
+                # Resolve screenshot path
                 image_path = source_images_map.get(slide_num)
-                if image_path and Path(image_path).exists():
-                    try:
-                        source_image = _normalize_image_orientation(Image.open(image_path))
-                    except Exception as e:
-                        print(f"  WARNING: Could not load image for slide {slide_num}: {e}")
+                screenshot_exists = image_path and Path(image_path).exists()
 
-                # Determine whether to use chart-row layout or image-left layout
-                has_charts = any(
-                    hasattr(bp, 'chart') and bp.chart is not None
-                    for bp in insight.bullet_points
-                )
-                if has_charts:
-                    builder.add_polished_chart_slide(
+                # ── Screenshot mode (PBIP/PBIX): embed PBI page capture ──
+                if use_screenshots and screenshot_exists:
+                    builder.add_screenshot_insight_slide(
                         slide_number=slide_num,
                         headline=insight.headline,
-                        bullet_points=insight.bullet_points
+                        bullet_points=insight.bullet_points,
+                        screenshot_path=image_path,
                     )
                 else:
-                    plain = [
-                        bp.text if hasattr(bp, 'text') else str(bp)
+                    # Chart mode (PDF / fallback): original logic
+                    source_image = None
+                    if screenshot_exists:
+                        try:
+                            source_image = _normalize_image_orientation(
+                                Image.open(image_path))
+                        except Exception as e:
+                            print(f"  WARNING: Could not load image for slide {slide_num}: {e}")
+
+                    has_charts = any(
+                        hasattr(bp, 'chart') and bp.chart is not None
                         for bp in insight.bullet_points
-                    ]
-                    builder.add_insight_slide(
-                        slide_number=slide_num,
-                        headline=insight.headline,
-                        insights=plain,
-                        source_image=source_image
                     )
+                    if has_charts:
+                        builder.add_polished_chart_slide(
+                            slide_number=slide_num,
+                            headline=insight.headline,
+                            bullet_points=insight.bullet_points
+                        )
+                    else:
+                        plain = [
+                            bp.text if hasattr(bp, 'text') else str(bp)
+                            for bp in insight.bullet_points
+                        ]
+                        builder.add_insight_slide(
+                            slide_number=slide_num,
+                            headline=insight.headline,
+                            insights=plain,
+                            source_image=source_image
+                        )
             else:
+                title = slide_info.get('title', f'slide {slide_num}')
                 print(f"  WARNING: No insight found for slide {slide_num}: {title}")
     else:
         # PPTX workflow: Original logic

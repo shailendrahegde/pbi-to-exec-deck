@@ -50,7 +50,7 @@ Parse the source file into per-slide PNG images and metadata.
 The AI reads each dashboard image, extracts numbers, identifies trends, and generates analyst-grade insights following the [Insight Formula](#insight-formula).
 
 ### 3. Build
-Assemble a polished 16:9 PPTX with SVG charts, insight headlines, executive summary, and recommendations.
+Assemble a polished 16:9 PPTX with embedded PBI screenshots (default) or vector charts, insight headlines, executive summary, and recommendations.
 
 ---
 
@@ -59,7 +59,7 @@ Assemble a polished 16:9 PPTX with SVG charts, insight headlines, executive summ
 Single-command run (installs deps + converts + validates):
 
 ```bash
-./convert-to-exec-deck.cmd "C:\path\to\dashboard.pdf" --assistant claude
+./convert-to-exec-deck.cmd "C:\path\to\dashboard.pdf"
 ```
 
 Or from inside Claude Code:
@@ -84,11 +84,11 @@ Copilot reads [COPILOT.md](COPILOT.md) (auto-discovered via [.github/copilot-ins
 
 ```bash
 # Step 1 — Extract (text layer + EasyOCR fallback for PPTX dashboard images)
-python convert_dashboard.py --source "<path>" --prepare --assistant copilot
+python convert_dashboard.py "<path>" --prepare --assistant copilot
 
 # Step 2 — Copilot reads images + OCR-enriched text, generates insights, writes JSON
 
-# Step 3 — Build
+# Step 3 — Build (default: PBI screenshots; add --vector-charts for matplotlib SVGs)
 python convert_dashboard.py --build --output "<output>.pptx"
 ```
 
@@ -156,7 +156,8 @@ convert to an executive deck "C:\path\to\report.pbip"
 ## What You Get
 
 - **16:9 widescreen** slides with dark professional theme
-- **SVG charts** — bar, column, line, donut, KPI cards, tables, treemap, scatter, funnel, gauge
+- **PBI page screenshots** embedded by default for pixel-perfect dashboard visuals
+- **Vector charts** (opt-in via `--vector-charts`) — bar, column, line, donut, KPI cards, tables, treemap, scatter, funnel, gauge
 - **Insight-driven headlines** that answer "so what?" for each dashboard page
 - **Executive summary** — 5 synthesized findings across all pages
 - **Action recommendations** — specific, data-grounded next steps
