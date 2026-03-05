@@ -18,9 +18,10 @@ class ChartDataPoint:
 
 @dataclass
 class ChartSpec:
-    type: str   # "bar"|"bar_stacked"|"column"|"column_stacked"|"line"|"area"|
-                # "pie"|"donut"|"scatter"|"bubble"|"radar"|
-                # "kpi"|"heatmap"|"table"|"funnel"|"treemap"|"gauge"
+    type: str   # "bar"|"bar_stacked"|"bar_stacked_100"|"column"|"column_stacked"|
+                # "column_stacked_100"|"line"|"area"|"pie"|"donut"|"scatter"|"bubble"|
+                # "radar"|"kpi"|"kpi_row"|"heatmap"|"table"|"funnel"|"treemap"|"gauge"|
+                # "waterfall"|"combo"|"column_line"|"ribbon"|"card"|"multi_row_card"
     # bar / column / pie / donut / funnel / treemap
     data: Optional[List[ChartDataPoint]] = None
     # line / area / scatter / bubble / radar

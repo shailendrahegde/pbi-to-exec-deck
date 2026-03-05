@@ -1136,30 +1136,303 @@ def render_kpi_row(slide, left, top, width, height, spec: ChartSpec):
 
 
 # ---------------------------------------------------------------------------
+# Waterfall chart
+# ---------------------------------------------------------------------------
+
+def render_waterfall(slide, left, top, width, height, spec: ChartSpec):
+    """
+    Waterfall chart built from shape rectangles.
+
+    Positive values → green bars going up; negative → red bars going down.
+    Items whose label contains 'total' or 'net' (or have explicit color)
+    are drawn as total bars anchored at zero.
+    """
+    data = spec.data or []
+    if not data:
+        return None
+
+    n = len(data)
+    labels = [dp.label for dp in data]
+    values = [dp.value for dp in data]
+
+    is_total = []
+    for dp in data:
+        if dp.color:
+            is_total.append(True)
+        elif 'total' in dp.label.lower() or 'net' in dp.label.lower():
+            is_total.append(True)
+        else:
+            is_total.append(False)
+
+    # Compute running baselines
+    running = 0.0
+    bottoms = []
+    for val, tot in zip(values, is_total):
+        if tot:
+            bottoms.append(0.0)
+            running = val
+        elif val >= 0:
+            bottoms.append(running)
+            running += val
+        else:
+            running += val
+            bottoms.append(running)
+
+    all_tops = [b + abs(v) if not t else v for b, v, t in zip(bottoms, values, is_total)]
+    y_max = max(max(all_tops), max(abs(v) for v in values)) if values else 1.0
+    y_min = min(min(bottoms), 0.0)
+    y_range = y_max - y_min if y_max > y_min else 1.0
+
+    INC_COLOR = RGBColor(46, 125, 50)     # green
+    DEC_COLOR = RGBColor(198, 40, 40)     # red
+    TOT_COLOR = PBI_BLUE_DARK
+
+    label_h_frac = 0.12
+    chart_top = top
+    chart_h = height * (1 - label_h_frac)
+    label_y = top + chart_h
+    col_w = width // n
+    bar_w = int(col_w * 0.6)
+    bar_pad = (col_w - bar_w) // 2
+
+    for i, (dp, val, bot, tot) in enumerate(zip(data, values, bottoms, is_total)):
+        bar_val = val if tot else abs(val)
+        # Map to pixel coordinates
+        bar_h_px = int(chart_h * bar_val / y_range)
+        bar_bot_px = int(chart_h * (bot - y_min) / y_range)
+        bar_y = chart_top + chart_h - bar_bot_px - bar_h_px
+
+        if tot:
+            c = _hex_to_rgb(dp.color) or TOT_COLOR
+        elif val >= 0:
+            c = INC_COLOR
+        else:
+            c = DEC_COLOR
+
+        if bar_h_px > 0:
+            bar = slide.shapes.add_shape(
+                1,
+                left + i * col_w + bar_pad, bar_y,
+                bar_w, max(bar_h_px, Inches(0.02))
+            )
+            bar.fill.solid()
+            bar.fill.fore_color.rgb = c
+            bar.line.fill.background()
+
+        # Value label above bar
+        prefix = "+" if val > 0 and not tot else ""
+        try:
+            vt = f"{prefix}{val:.0f}" if val == int(val) else f"{prefix}{val:.1f}"
+        except (ValueError, TypeError):
+            vt = str(val)
+        _add_textbox(slide, vt,
+                     left + i * col_w, max(bar_y - Inches(0.18), chart_top),
+                     col_w, Inches(0.18),
+                     font_size_pt=7, bold=tot, color=DARK_GRAY,
+                     align=PP_ALIGN.CENTER)
+
+        # Category label below
+        _add_textbox(slide, dp.label,
+                     left + i * col_w, label_y,
+                     col_w, height * label_h_frac,
+                     font_size_pt=8, color=DARK_GRAY,
+                     align=PP_ALIGN.CENTER)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Combo chart (column + line)
+# ---------------------------------------------------------------------------
+
+def render_combo(slide, left, top, width, height, spec: ChartSpec):
+    """
+    Combo chart using native python-pptx clustered column + line overlay.
+    Falls back to column or line if only one data source is present.
+    """
+    has_data = bool(spec.data)
+    has_series = bool(spec.series)
+
+    if not has_data and not has_series:
+        return None
+    if not has_series:
+        return render_column_chart(slide, left, top, width, height, spec)
+    if not has_data:
+        return render_line_chart(slide, left, top, width, height, spec)
+
+    # Build column data from spec.data
+    categories = [dp.label for dp in spec.data]
+    bar_values = [dp.value for dp in spec.data]
+
+    cd = ChartData()
+    cd.categories = categories
+    cd.add_series('Values', bar_values)
+
+    # Add line series — map series points to categories
+    for s in spec.series:
+        pts = s.get('points', [])
+        line_vals = []
+        for cat in categories:
+            val = None
+            for p in pts:
+                if str(p.get('x', '')) == cat:
+                    val = float(p.get('y', 0))
+                    break
+            line_vals.append(val if val is not None else 0.0)
+        cd.add_series(s.get('name', 'Trend'), line_vals)
+
+    cf = slide.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_CLUSTERED, left, top, width, height, cd
+    )
+    chart_obj = cf.chart
+    _apply_pbi_chart_style(chart_obj, cf)
+
+    # Style column series
+    _set_series_color(chart_obj.series[0], PBI_BLUE)
+    _set_data_labels(chart_obj.series[0], font_size_pt=8, position='outEnd')
+
+    # Convert extra series to lines via XML (python-pptx doesn't natively support combo)
+    # The rendered chart will show all series as columns — for a true combo,
+    # the MPL renderer is recommended (use_mpl=True).
+    for i in range(1, len(chart_obj.series)):
+        palette = [PBI_PINK, PBI_PURPLE, PBI_PINK_DARK]
+        _set_series_color(chart_obj.series[i], palette[(i-1) % len(palette)])
+        _set_data_labels(chart_obj.series[i], font_size_pt=7, position='t')
+
+    if len(chart_obj.series) > 1:
+        _add_legend(chart_obj)
+
+    return cf
+
+
+# ---------------------------------------------------------------------------
+# 100% Stacked Bar / Column
+# ---------------------------------------------------------------------------
+
+def render_bar_stacked_100(slide, left, top, width, height, spec: ChartSpec):
+    """100% stacked horizontal bar chart."""
+    series_raw = spec.series
+    if not series_raw:
+        return render_bar_chart(slide, left, top, width, height, spec)
+
+    cat_order = list(dict.fromkeys(s.get('label', '') for s in series_raw))
+    ser_names = list(dict.fromkeys(s.get('series', '') for s in series_raw))
+    data_map = {sn: {c: 0.0 for c in cat_order} for sn in ser_names}
+    for item in series_raw:
+        data_map[item.get('series', '')][item.get('label', '')] = float(item.get('value', 0))
+
+    cd = ChartData()
+    cd.categories = cat_order
+    for sn in ser_names:
+        cd.add_series(sn, [data_map[sn][c] for c in cat_order])
+
+    cf = slide.shapes.add_chart(
+        XL_CHART_TYPE.BAR_STACKED_100, left, top, width, height, cd
+    )
+    chart_obj = cf.chart
+    _apply_pbi_chart_style(chart_obj, cf)
+    for i, sn in enumerate(ser_names):
+        _set_series_color(chart_obj.series[i], MULTI_PALETTE[i % len(MULTI_PALETTE)])
+    _add_legend(chart_obj)
+    return cf
+
+
+def render_column_stacked_100(slide, left, top, width, height, spec: ChartSpec):
+    """100% stacked vertical column chart."""
+    series_raw = spec.series
+    if not series_raw:
+        return render_column_chart(slide, left, top, width, height, spec)
+
+    cat_order = list(dict.fromkeys(s.get('label', '') for s in series_raw))
+    ser_names = list(dict.fromkeys(s.get('series', '') for s in series_raw))
+    data_map = {sn: {c: 0.0 for c in cat_order} for sn in ser_names}
+    for item in series_raw:
+        data_map[item.get('series', '')][item.get('label', '')] = float(item.get('value', 0))
+
+    cd = ChartData()
+    cd.categories = cat_order
+    for sn in ser_names:
+        cd.add_series(sn, [data_map[sn][c] for c in cat_order])
+
+    cf = slide.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_STACKED_100, left, top, width, height, cd
+    )
+    chart_obj = cf.chart
+    _apply_pbi_chart_style(chart_obj, cf)
+    for i, sn in enumerate(ser_names):
+        _set_series_color(chart_obj.series[i], MULTI_PALETTE[i % len(MULTI_PALETTE)])
+    _add_legend(chart_obj)
+    return cf
+
+
+# ---------------------------------------------------------------------------
+# Ribbon chart
+# ---------------------------------------------------------------------------
+
+def render_ribbon(slide, left, top, width, height, spec: ChartSpec):
+    """
+    Ribbon chart — rendered as stacked area with python-pptx.
+    True ribbon crossing requires the MPL renderer for full fidelity.
+    """
+    series_raw = spec.series
+    if not series_raw:
+        return None
+
+    cat_order = list(dict.fromkeys(s.get('label', '') for s in series_raw))
+    ser_names = list(dict.fromkeys(s.get('series', '') for s in series_raw))
+    data_map = {sn: {c: 0.0 for c in cat_order} for sn in ser_names}
+    for item in series_raw:
+        data_map[item.get('series', '')][item.get('label', '')] = float(item.get('value', 0))
+
+    cd = ChartData()
+    cd.categories = cat_order
+    for sn in ser_names:
+        cd.add_series(sn, [data_map[sn][c] for c in cat_order])
+
+    cf = slide.shapes.add_chart(
+        XL_CHART_TYPE.AREA_STACKED, left, top, width, height, cd
+    )
+    chart_obj = cf.chart
+    _apply_pbi_chart_style(chart_obj, cf)
+    for i, sn in enumerate(ser_names):
+        _set_series_color(chart_obj.series[i], MULTI_PALETTE[i % len(MULTI_PALETTE)])
+    _add_legend(chart_obj)
+    return cf
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
 def render_chart(slide, left, top, width, height, spec: ChartSpec):
     """Dispatch to the correct renderer. Returns shape/chart_frame or None."""
     dispatch = {
-        'bar':              render_bar_chart,
-        'bar_stacked':      render_bar_stacked_chart,
-        'column':           render_column_chart,
-        'column_stacked':   render_column_stacked_chart,
-        'line':             render_line_chart,
-        'area':             render_area_chart,
-        'pie':              render_pie_chart,
-        'donut':            render_donut_chart,
-        'scatter':          render_scatter_chart,
-        'bubble':           render_bubble_chart,
-        'radar':            render_radar_chart,
-        'kpi':              render_kpi_card,
-        'kpi_row':          render_kpi_row,
-        'heatmap':          render_heatmap,
-        'table':            render_table,
-        'funnel':           render_funnel,
-        'treemap':          render_treemap,
-        'gauge':            render_gauge,
+        'bar':               render_bar_chart,
+        'bar_stacked':       render_bar_stacked_chart,
+        'bar_stacked_100':   render_bar_stacked_100,
+        'column':            render_column_chart,
+        'column_stacked':    render_column_stacked_chart,
+        'column_stacked_100':render_column_stacked_100,
+        'line':              render_line_chart,
+        'area':              render_area_chart,
+        'pie':               render_pie_chart,
+        'donut':             render_donut_chart,
+        'scatter':           render_scatter_chart,
+        'bubble':            render_bubble_chart,
+        'radar':             render_radar_chart,
+        'kpi':               render_kpi_card,
+        'kpi_row':           render_kpi_row,
+        'heatmap':           render_heatmap,
+        'table':             render_table,
+        'funnel':            render_funnel,
+        'treemap':           render_treemap,
+        'gauge':             render_gauge,
+        'waterfall':         render_waterfall,
+        'combo':             render_combo,
+        'column_line':       render_combo,        # alias
+        'ribbon':            render_ribbon,
+        # PBI-native name aliases
+        'card':              render_kpi_card,
+        'multi_row_card':    render_kpi_row,
     }
     fn = dispatch.get((spec.type or '').lower().strip())
     if fn is None:

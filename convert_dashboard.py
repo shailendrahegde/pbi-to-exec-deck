@@ -103,25 +103,53 @@ def detect_file_type(file_path):
         )
 
 
+def _load_mcp_server_config() -> dict | None:
+    """Return the powerbi-modeling MCP server config dict, or None if not found.
+
+    Checks in order:
+      1. .mcp.json in the current project directory
+      2. ~/.claude/mcp-settings.json (global Claude Code config)
+
+    Handles JSON files with unescaped Windows backslashes in path strings
+    (Claude Code writes these natively; Python's strict JSON parser rejects them).
+    """
+    import re as _re
+
+    def _read_json(path: Path) -> dict:
+        text = path.read_text(encoding="utf-8")
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            # Fix bare backslashes not followed by a valid JSON escape character
+            fixed = _re.sub(r'\\(?!["\\/bfnrtu0-9])', r'\\\\', text)
+            return json.loads(fixed)
+
+    candidates = [
+        Path(".mcp.json"),
+        Path.home() / ".claude" / "mcp-settings.json",
+    ]
+    for path in candidates:
+        if path.exists():
+            try:
+                cfg = _read_json(path)
+                server = cfg.get("mcpServers", {}).get("powerbi-modeling")
+                if server:
+                    return server
+            except Exception:
+                pass
+    return None
+
+
 def _check_pbi_mcp_setup() -> bool:
     """
     Warn clearly if the Power BI Modeling MCP is not installed/configured.
     Returns True if MCP is ready for DAX queries, False otherwise.
     Does NOT block execution.
     """
-    mcp_json = Path(".mcp.json")
+    server = _load_mcp_server_config()
 
-    configured = False
-    exe_valid  = False
-    if mcp_json.exists():
-        try:
-            cfg    = json.loads(mcp_json.read_text(encoding="utf-8"))
-            server = cfg.get("mcpServers", {}).get("powerbi-modeling")
-            if server:
-                configured = True
-                exe_valid  = Path(server.get("command", "")).exists()
-        except Exception:
-            pass
+    configured = server is not None
+    exe_valid  = configured and Path(server.get("command", "")).exists()
 
     if configured and exe_valid:
         print("  OK Power BI Modeling MCP configured — DAX query mode enabled")
@@ -153,17 +181,8 @@ def _check_pbi_mcp_setup() -> bool:
 
 def _is_mcp_ready() -> bool:
     """Silent MCP check — returns True/False without printing anything."""
-    mcp_json = Path(".mcp.json")
-    if not mcp_json.exists():
-        return False
-    try:
-        cfg    = json.loads(mcp_json.read_text(encoding="utf-8"))
-        server = cfg.get("mcpServers", {}).get("powerbi-modeling")
-        if server and Path(server.get("command", "")).exists():
-            return True
-    except Exception:
-        pass
-    return False
+    server = _load_mcp_server_config()
+    return server is not None and Path(server.get("command", "")).exists()
 
 
 def prepare_for_analysis(source_path, use_text_layer: bool = False):

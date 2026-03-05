@@ -839,18 +839,33 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
 
     win32gui.EnumWindows(_enum_cb, None)
 
+    # Non-PBI Office app suffixes to exclude from stem matches
+    _NON_PBI_SUFFIXES = ('- powerpoint', '- word', '- excel', '- outlook',
+                         '- notepad', '- visual studio', '- code')
+
     # Build a normalised match key from the PBIP stem for fuzzy title matching
     if pbip_stem:
         match_key = re.sub(r'[^\w ]', '', pbip_stem.lower())[:25].strip()
         for hwnd, title in all_windows:
             norm = re.sub(r'[^\w ]', '', title.lower())
             if match_key and match_key in norm:
-                stem_matches.append((hwnd, title))
+                # Exclude windows that are clearly a different Office application
+                title_lower = title.lower()
+                if not any(title_lower.endswith(s) or (s + ' ') in title_lower
+                           for s in _NON_PBI_SUFFIXES):
+                    stem_matches.append((hwnd, title))
 
     # Pick the best candidate
+    # Priority order:
+    #   1. Window whose title contains both the PBIP stem AND "Power BI Desktop"
+    #   2. Any "Power BI Desktop" window (fallback when PBI omits the suffix)
+    #   3. Stem match that isn't a known non-PBI application (last resort)
     pbi_hwnd = None
-    if stem_matches:
-        # Best: window title contains the PBIP file name
+    stem_and_pbi = [hw for hw, t in stem_matches if 'Power BI Desktop' in t]
+    if stem_and_pbi:
+        pbi_hwnd = stem_and_pbi[0]
+    elif stem_matches:
+        # Stem found but "Power BI Desktop" not in title — newer PBI build
         pbi_hwnd = stem_matches[0][0]
     elif pbi_all:
         # OK: any "Power BI Desktop" window
@@ -902,11 +917,21 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
     wl, wt, wr, wb = rect
     print(f"  Window: {wr - wl}x{wb - wt} at ({wl},{wt})")
 
+    # --- 4b. Detect per-window DPI for accurate constant scaling ---
+    try:
+        _dpi = ctypes.windll.user32.GetDpiForWindow(pbi_hwnd)
+        _dpi_factor = _dpi / 96.0
+    except Exception:
+        _dpi_factor = 1.0
+    print(f"  DPI factor: {_dpi_factor:.2f} ({int(_dpi_factor * 100)}%)")
+
     # --- 5. Determine canvas bounds ---
-    RIBBON_H    = 130        # title-bar + menu + quick-access + collapsed ribbon
-    TABS_H      = 52         # page-tab strip + status bar
-    LEFT_TRIM   = max(0, -wl)  # off-screen border (usually 8px for maximised window)
-    LEFT_RAIL_W = 48         # PBI Desktop left navigation rail (collapsed icon bar)
+    # All pixel constants are scaled by DPI factor so they work correctly on
+    # 100%, 125%, 150%, and 175% display scaling.
+    RIBBON_H    = int(170 * _dpi_factor)  # title-bar + menu + expanded ribbon
+    TABS_H      = int(52  * _dpi_factor)  # page-tab strip + status bar
+    LEFT_TRIM   = max(0, -wl)             # off-screen border (maximised window)
+    LEFT_RAIL_W = int(48  * _dpi_factor)  # PBI Desktop left navigation rail
 
     CANVAS_LEFT   = wl + LEFT_TRIM + LEFT_RAIL_W
     CANVAS_TOP    = wt + RIBBON_H
@@ -1007,8 +1032,13 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
                 uniform_streak = 0
 
         if panel_start_img_x is not None:
-            CANVAS_RIGHT = CANVAS_LEFT + panel_start_img_x
-            print(f"  Right panel detected at screen x={CANVAS_RIGHT} -- cropped out")
+            _panel_px = cal_w - panel_start_img_x   # width of the detected panel in px
+            _min_panel = int(150 * _dpi_factor)      # minimum plausible editing-panel width
+            if _panel_px >= _min_panel:
+                CANVAS_RIGHT = CANVAS_LEFT + panel_start_img_x
+                print(f"  Right panel detected ({_panel_px}px) at screen x={CANVAS_RIGHT} -- cropped out")
+            else:
+                print(f"  Right panel skipped ({_panel_px}px < {_min_panel}px minimum -- likely report slicer, keeping)")
 
     print(f"  Canvas: ({CANVAS_LEFT},{CANVAS_TOP}) -> ({CANVAS_RIGHT},{CANVAS_BOTTOM})"
           f"  [{CANVAS_RIGHT - CANVAS_LEFT}x{CANVAS_BOTTOM - CANVAS_TOP}]")
@@ -1124,6 +1154,12 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
         _r0 = _tab_strip.rectangle()
         print(f"  UIAutomation tab strip: rect=({_r0.left},{_r0.top},"
               f"{_r0.right},{_r0.bottom})  w={_r0.right - _r0.left}")
+
+        # Tighten CANVAS_BOTTOM to the actual tab strip top — more accurate than
+        # the wb - TABS_H estimate which can cut off chart content at the bottom.
+        if _r0.top > CANVAS_TOP + 100:
+            CANVAS_BOTTOM = min(CANVAS_BOTTOM, _r0.top)
+            print(f"  CANVAS_BOTTOM tightened to tab strip top: {CANVAS_BOTTOM}")
 
         _page_tabs = _tab_strip.children(control_type='TabItem')
         n_tabs = len(_page_tabs)

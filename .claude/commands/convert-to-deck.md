@@ -19,14 +19,14 @@ The argument `$ARGUMENTS` is the path to the source file.
 Run the extractor to pull out dashboard images and metadata:
 
 ```bash
-python convert_dashboard.py --source $ARGUMENTS --prepare
+python convert_dashboard.py $ARGUMENTS --prepare
 ```
 
 If `--prepare` fails because dependencies are missing, install them first:
 
 ```bash
 pip install -r requirements.txt
-python convert_dashboard.py --source $ARGUMENTS --prepare
+python convert_dashboard.py $ARGUMENTS --prepare
 ```
 
 ### Step 2 — Read the analysis request
