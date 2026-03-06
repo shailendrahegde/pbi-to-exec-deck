@@ -36,7 +36,7 @@ Use `--vector-charts` when: exact DAX data available, screenshots are low qualit
 3. Act as senior analyst advisor to an IT decision maker
 4. Write `temp/insights.json`
 
-**CRITICAL: Read `DASHBOARD_READING_RULES.md` before analyzing (if available).**
+**CRITICAL: Read `docs/DASHBOARD_READING_RULES.md` before analyzing (if available).**
 
 ### Using Text Layer Data
 
@@ -294,7 +294,7 @@ python convert_dashboard.py --build --output "<output>.pptx"
 | File | Purpose |
 |---|---|
 | `convert_dashboard.py` | Main orchestrator |
-| `DASHBOARD_READING_RULES.md` | Read before any analysis (if available) |
-| `Claude PowerPoint Constitution.md` | Quality standards and governance |
+| `docs/DASHBOARD_READING_RULES.md` | Read before any analysis (if available) |
+| `docs/Claude PowerPoint Constitution.md` | Quality standards and governance |
 | `lib/rendering/builder.py` | Slide renderer (16:9 format) |
 | `temp/` | Working directory (auto-generated, not committed) |

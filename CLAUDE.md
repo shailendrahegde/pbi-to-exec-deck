@@ -36,7 +36,7 @@ Use `--vector-charts` when: exact DAX data available, screenshots are low qualit
 3. Act as senior analyst advisor to an IT decision maker
 4. Write `temp/insights.json`
 
-**CRITICAL: Read `DASHBOARD_READING_RULES.md` before analyzing.**
+**CRITICAL: Read `docs/DASHBOARD_READING_RULES.md` before analyzing.**
 
 ### insights.json Root Structure
 
@@ -322,8 +322,8 @@ Rule: Never add a time unit that appears in neither the DAX formula nor the acti
 | File | Purpose |
 |---|---|
 | `convert_dashboard.py` | Main orchestrator |
-| `DASHBOARD_READING_RULES.md` | **Read before any analysis** |
-| `Claude PowerPoint Constitution.md` | Quality standards and governance |
+| `docs/DASHBOARD_READING_RULES.md` | **Read before any analysis** |
+| `docs/Claude PowerPoint Constitution.md` | Quality standards and governance |
 | `lib/rendering/builder.py` | Slide renderer (16:9 format) |
 | `lib/rendering/validator.py` | Constitution compliance checker |
 | `temp/` | Working directory (auto-generated, not committed) |
