@@ -13,11 +13,10 @@ This tool works with **[GitHub Copilot Chat](#option-a--github-copilot-chat-reco
 | | ⚡ Quick Mode | 🔬 Deep Analysis Mode |
 |---|---|---|
 | **Input** | PDF or PPTX export | PBIP or PBIX project file |
-| **Data source** | AI reads page / slide images (OCR) | Live DAX queries via Power BI MCP (exact values) |
-| **Accuracy** | Good — visual estimation from screenshots | **Highest** — precise numbers queried from the model |
+| **Data source** | AI reads page / slide images (OCR) | Live DAX queries via Power BI MCP (exact values) ; higher accuracy |
 | **Requires MCP?** | No | Yes (one-time setup) — falls back to image analysis if MCP is unavailable |
 | **Time** | **~3–5 minutes** | **~15–20 minutes** (~1 min per dashboard page) |
-| **Best for** | Quick stakeholder readouts, sharing externally | Board-level decks where every number must be exact |
+
 
 > **Preferred AI model:** Claude **Opus** or **Sonnet** — both provide the best insight quality. Set your model in Copilot Chat settings or Claude Code config.
 
