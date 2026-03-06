@@ -67,6 +67,9 @@ wpp22*.pptx
 # Temp directory with analysis files
 temp/
 
+# Catch-all: any PPTX generated at root (covers all naming patterns)
+*.pptx
+
 # EXCEPT: Include the example storyboard template
 !Example-Storyboard-Analytics.pptx
 
@@ -85,6 +88,8 @@ nul
 !.claude/
 !.claude/commands/
 !.claude/commands/*.md
+# Exclude machine-specific local settings
+.claude/settings.local.json
 
 # IDE files
 .vscode/
