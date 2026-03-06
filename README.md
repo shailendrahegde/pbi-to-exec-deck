@@ -4,7 +4,7 @@
 
 Turn Power BI dashboards into polished, insight-driven presentations automatically. No design skills, no manual slide-building, no copy-pasting numbers.
 
-This tool works with **[GitHub Copilot Chat](#option-a--github-copilot-chat-recommended)** (in VS Code) or **[Claude Code](#option-b--claude-code-cli)** — pick whichever you already have.
+This tool works with **[GitHub Copilot Chat](#option-a--github-copilot-chat)** (in VS Code) or **[Claude Code](#option-b--claude-code-cli)** — pick whichever you already have.
 
 ---
 
@@ -22,7 +22,7 @@ This tool works with **[GitHub Copilot Chat](#option-a--github-copilot-chat-reco
 
 ---
 
-## Option A — GitHub Copilot Chat (Recommended)
+## Option A — GitHub Copilot Chat
 
 ### 1. Download the repo
 
@@ -66,18 +66,14 @@ Dependencies (`requirements-copilot.txt`) are auto-installed on first run.
 
 ## Option B — Claude Code (CLI)
 
-### 1. Install Claude Code
-
-Follow the [Claude Code CLI docs](https://docs.anthropic.com/en/docs/claude-code/overview) to install.
-
-### 2. Clone and enter the repo
+### 1. Clone and enter the repo
 
 ```bash
 git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
 cd pbi-to-exec-deck
 ```
 
-### 3. Enter Claude and run the conversion
+### 2. Enter Claude and run the conversion
 
 ```
 claude
