@@ -993,6 +993,82 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
     def _hash_img(img):
         return _hashlib.md5(img.tobytes()).hexdigest()[:8]
 
+    def _detect_report_rect(img):
+        """Detect the PBI report page rectangle within the rough canvas crop.
+
+        PBI Desktop in 'Fit to page' mode places the report on a uniform gray
+        workspace and draws a dotted border around it.  Scan inward from each
+        edge: workspace rows/cols have very low std-dev (~0–2), the first
+        row/col with noticeably higher std is the dotted border / content.
+
+        The workspace baseline std is estimated from the lowest per-edge
+        minimum — at least one edge always has clean workspace pixels.
+
+        Returns (left, top, right, bottom) using PIL crop convention (right
+        and bottom are EXCLUSIVE), or None if detection fails.
+        Does NOT assume any report background colour.
+        """
+        try:
+            import numpy as _np
+        except ImportError:
+            return None
+
+        gray = _np.array(img.convert('L'), dtype=_np.float32)
+        h, w = gray.shape
+        if h < 100 or w < 100:
+            return None
+
+        row_std = gray.std(axis=1)
+        col_std = gray.std(axis=0)
+
+        # Workspace baseline: take the minimum std from each edge's outer
+        # 10 rows/cols, then use the overall minimum.  At least one edge
+        # (typically bottom or left) will be clean workspace.
+        _edge = 10
+        _edge_mins = []
+        if h > 2 * _edge:
+            _edge_mins.append(float(row_std[:_edge].min()))
+            _edge_mins.append(float(row_std[-_edge:].min()))
+        if w > 2 * _edge:
+            _edge_mins.append(float(col_std[:_edge].min()))
+            _edge_mins.append(float(col_std[-_edge:].min()))
+        if not _edge_mins:
+            return None
+
+        _ws_std = min(_edge_mins)
+        _VT = max(_ws_std + 3.0, 3.5)
+
+        def _scan_inward(arr, from_end=False):
+            """Return the index of the first element > _VT, scanning from
+            the start (from_end=False) or from the end (from_end=True)."""
+            indices = range(len(arr) - 1, -1, -1) if from_end else range(len(arr))
+            for idx in indices:
+                if arr[idx] > _VT:
+                    return idx
+            return None
+
+        # Bottom edge (scan upward) — most important for the cropping bug
+        bottom = _scan_inward(row_std, from_end=True)
+        top    = _scan_inward(row_std, from_end=False)
+        left   = _scan_inward(col_std, from_end=False)
+        right  = _scan_inward(col_std, from_end=True)
+
+        if any(v is None for v in (top, bottom, left, right)):
+            return None
+
+        # Skip past the dotted-border dashes themselves (typically 1–3 px)
+        _skip = 3
+        top    += _skip
+        bottom -= _skip
+        left   += _skip
+        right  -= _skip
+
+        # Sanity: result must be reasonably sized
+        if (right - left) < 200 or (bottom - top) < 150:
+            return None
+
+        return (left, top, right + 1, bottom + 1)
+
     # --- Detect right panel (Visualizations / Fields / Format) by white-pixel fraction ---
     # Key insight: PBI editing panels have a gray background (~RGB 242) that
     # makes <5% of column pixels reach brightness>=248 (pure white).  The
@@ -1120,8 +1196,9 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
 
         # Step A2: set Page View = "Fit to page" so report content scales to the
         # visible canvas area and nothing overflows the bottom edge.
-        # Approach: click the View ribbon tab, find the "Fit to page" button, click it,
-        # then return to Home.  All wrapped in try/except — non-critical.
+        # Approach: click View ribbon tab → click "Page view" button to open
+        # dropdown → check if "Fit to page" is already toggled on → if not,
+        # click it → close dropdown → return to Home tab.
         try:
             _view_tab_ctrl = None
             for _ctrl in _pbi_win.descendants(control_type='TabItem'):
@@ -1130,27 +1207,59 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
                     break
             if _view_tab_ctrl:
                 _view_tab_ctrl.select()
-                _time.sleep(0.5)
-                # Search for the "Fit to page" button (exact or partial match)
-                _ftp_clicked = False
+                _time.sleep(0.8)
+
+                # Click the "Page view" button in the ribbon (y < 300) to
+                # open the dropdown menu with Fit to page / Fit to width /
+                # Actual size checkboxes.
+                _pv_btn = None
                 for _ctrl in _pbi_win.descendants(control_type='Button'):
                     _bt = _ctrl.window_text().strip().lower()
-                    if 'fit to page' in _bt or _bt == 'fit':
-                        _ctrl.click_input()
-                        _time.sleep(0.3)
-                        _ftp_clicked = True
-                        print("  Set Page View = Fit to page")
+                    if _bt == 'page view' and _ctrl.rectangle().top < 300:
+                        _pv_btn = _ctrl
                         break
-                if not _ftp_clicked:
-                    # Fallback: look for SplitButton or MenuItem named "Page view"
-                    for _ctrl in _pbi_win.descendants():
+
+                _ftp_done = False
+                if _pv_btn:
+                    _pv_btn.click_input()
+                    _time.sleep(0.8)
+                    # Look for the "Fit to page" CheckBox in the dropdown
+                    for _ctrl in _pbi_win.descendants(control_type='CheckBox'):
+                        if _ctrl.window_text().strip().lower() == 'fit to page':
+                            try:
+                                _state = _ctrl.get_toggle_state()
+                            except Exception:
+                                _state = 0
+                            if _state == 1:
+                                # Already active — close dropdown with Escape
+                                from pywinauto.keyboard import send_keys as _send_keys
+                                _send_keys('{ESC}')
+                                _time.sleep(0.3)
+                                print("  Page View = Fit to page (already active)")
+                            else:
+                                _ctrl.click_input()
+                                _time.sleep(0.5)
+                                print("  Set Page View = Fit to page")
+                            _ftp_done = True
+                            break
+                    if not _ftp_done:
+                        # Dropdown opened but checkbox not found — close it
+                        from pywinauto.keyboard import send_keys as _send_keys
+                        _send_keys('{ESC}')
+                        _time.sleep(0.3)
+
+                if not _ftp_done:
+                    # Fallback: look for a Button/SplitButton with "fit to page"
+                    # anywhere in the ribbon area (y < 300).
+                    for _ctrl in _pbi_win.descendants(control_type='Button'):
                         _bt = _ctrl.window_text().strip().lower()
-                        if _bt in ('fit to page', 'page view: fit to page'):
+                        if 'fit to page' in _bt and _ctrl.rectangle().top < 300:
                             _ctrl.click_input()
                             _time.sleep(0.3)
-                            _ftp_clicked = True
+                            _ftp_done = True
                             print("  Set Page View = Fit to page (fallback)")
                             break
+
                 # Return to Home tab regardless of success
                 for _ctrl in _pbi_win.descendants(control_type='TabItem'):
                     if _ctrl.window_text().strip().lower() == 'home':
@@ -1262,6 +1371,36 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
         for _pi in range(len(pages)):
             if _pi not in _tab_for_page and _free_tabs:
                 _tab_for_page[_pi] = _free_tabs.pop(0)
+
+        # --- 6b. Refine canvas bounds via dotted-border detection ---
+        # PBI Desktop's 'Fit to page' mode draws a dotted border around the
+        # report page on a uniform gray workspace.  Detect this rectangular
+        # boundary from pixel variance to get exact crop coordinates.
+        #
+        # IMPORTANT: We only refine LEFT, TOP, and RIGHT from the detected
+        # border.  CANVAS_BOTTOM is kept at the tab-strip top (from
+        # UIAutomation) because:
+        #   1. Different report pages may have content extending to different
+        #      depths — the detection runs on just ONE page.
+        #   2. A few rows of gray workspace at the bottom is harmless;
+        #      clipping actual chart/table content is not.
+        _time.sleep(1.0)  # ensure page fully rendered after Fit-to-page
+        _rough_img = _grab_canvas()
+        _report_rect = _detect_report_rect(_rough_img)
+        if _report_rect is not None:
+            _rl, _rt, _rr, _rb = _report_rect
+            _old_cl, _old_ct = CANVAS_LEFT, CANVAS_TOP
+            CANVAS_LEFT   = _old_cl + _rl
+            CANVAS_TOP    = _old_ct + _rt
+            CANVAS_RIGHT  = _old_cl + _rr
+            # Keep CANVAS_BOTTOM unchanged — don't tighten bottom edge
+            print(f"  Dotted-border detected: report rect ({_rr - _rl}x{_rb - _rt})"
+                  f" at offset ({_rl},{_rt}) in rough canvas")
+            print(f"  Canvas refined (LTR only): ({CANVAS_LEFT},{CANVAS_TOP})"
+                  f" -> ({CANVAS_RIGHT},{CANVAS_BOTTOM})"
+                  f"  [{CANVAS_RIGHT - CANVAS_LEFT}x{CANVAS_BOTTOM - CANVAS_TOP}]")
+        else:
+            print(f"  Dotted-border detection: not found — using heuristic canvas bounds")
 
         # Capture a baseline hash BEFORE navigating page 1 so we can detect
         # whether page 1's content has actually changed from whatever PBI was
