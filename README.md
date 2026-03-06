@@ -4,32 +4,100 @@
 
 Turn Power BI dashboards into polished, insight-driven presentations automatically. No design skills, no manual slide-building, no copy-pasting numbers.
 
-Works with **Claude Code** or **GitHub Copilot Chat** — choose the assistant that fits your setup.
+This tool works with **[GitHub Copilot Chat](#option-a--github-copilot-chat-recommended)** (in VS Code) or **[Claude Code](#option-b--claude-code-cli)** — pick whichever you already have.
 
 ---
 
-## Quick Start
+## Two Modes
+
+| | ⚡ Quick Mode | 🔬 Deep Analysis Mode |
+|---|---|---|
+| **Input** | PDF or PPTX export | PBIP or PBIX project file |
+| **Data source** | AI reads page / slide images (OCR) | Live DAX queries via Power BI MCP (exact values) |
+| **Accuracy** | Good — visual estimation from screenshots | **Highest** — precise numbers queried from the model |
+| **Requires MCP?** | No | Yes (one-time setup) — falls back to image analysis if MCP is unavailable |
+| **Time** | **~3–5 minutes** | **~15–20 minutes** (~1 min per dashboard page) |
+| **Best for** | Quick stakeholder readouts, sharing externally | Board-level decks where every number must be exact |
+
+> **Preferred AI model:** Claude **Opus** or **Sonnet** — both provide the best insight quality. Set your model in Copilot Chat settings or Claude Code config.
+
+---
+
+## Option A — GitHub Copilot Chat (Recommended)
+
+### 1. Download the repo
+
+```bash
+git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
+```
+
+### 2. Open the folder in VS Code
+
+```bash
+code pbi-to-exec-deck
+```
+
+### 3. Switch Copilot Chat to Agent Mode
+
+1. Open the **Copilot Chat** panel (Ctrl + Shift + I, or click the Copilot icon in the sidebar).
+2. In the chat input area, click the **mode selector** dropdown (it may say "Ask" or "Edit") and switch to **Agent**.
+3. *(Optional)* Click the **model picker** next to it and select **Claude Sonnet** or **Claude Opus** for best results.
+
+### 4. Ask Copilot to convert your dashboard
+
+Type in the chat:
+
+> Create exec deck `"C:\path\to\dashboard.pdf"`
+
+That's it. Copilot reads the project instructions automatically ([COPILOT.md](COPILOT.md) via [.github/copilot-instructions.md](.github/copilot-instructions.md)) and runs the full pipeline — extract, analyze, build — producing a polished PPTX.
+
+**Quick Mode (PDF / PPTX):**
+
+> Create exec deck `"C:\path\to\dashboard.pdf"`
+
+**Deep Analysis Mode (PBIP / PBIX):**
+
+> Create exec deck `"C:\path\to\report.pbip"`
+
+*(Make sure Power BI Desktop has the report open and MCP is configured — see [Deep Analysis Setup](#deep-analysis-setup-pbip--pbix) below.)*
+
+Dependencies (`requirements-copilot.txt`) are auto-installed on first run.
+
+---
+
+## Option B — Claude Code (CLI)
+
+### 1. Install Claude Code
+
+Follow the [Claude Code CLI docs](https://docs.anthropic.com/en/docs/claude-code/overview) to install.
+
+### 2. Clone and enter the repo
 
 ```bash
 git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
 cd pbi-to-exec-deck
 ```
 
-Then pick your assistant:
+### 3. Run the conversion
 
-| | Claude Code | GitHub Copilot Chat |
-|---|---|---|
-| **Setup** | [Install Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview) | Open repo in VS Code with Copilot |
-| **Run** | `claude` → _"convert to an executive deck ‹path›"_ | Ask Copilot Chat: _"Convert ‹path› to an executive deck"_ |
-| **API key?** | Uses Claude session | No key needed |
-| **Deps** | `requirements.txt` | `requirements-copilot.txt` |
-
-Dependencies are auto-installed on first run. You can also install manually:
+Single-command run (installs deps + converts + validates):
 
 ```bash
-pip install -r requirements.txt          # Claude
-pip install -r requirements-copilot.txt  # Copilot
+./convert-to-exec-deck.cmd "C:\path\to\dashboard.pdf"
 ```
+
+Or from inside a Claude Code session:
+
+```
+claude
+> convert to an executive deck "C:\path\to\dashboard.pdf"
+```
+
+![Demo](demo.gif)
+
+**Quick Mode (PDF / PPTX)** — ~3–5 minutes. **Deep Analysis (PBIP / PBIX)** — ~15–20 minutes.
+
+Dependencies (`requirements.txt`) are auto-installed on first run.
 
 Optional PowerShell alias (run `convert-to-exec-deck` from anywhere):
 
@@ -44,91 +112,42 @@ Optional PowerShell alias (run `convert-to-exec-deck` from anywhere):
 Both assistants follow the same three-step pipeline:
 
 ### 1. Extract
-Parse the source file into per-slide PNG images and metadata.
+Parse the source file into per-page PNG screenshots and metadata.
 
 ### 2. Analyze
-The AI reads each dashboard image, extracts numbers, identifies trends, and generates analyst-grade insights following the [Insight Formula](#insight-formula).
+The AI reads each dashboard image, extracts numbers, identifies trends, and generates analyst-grade insights following the [Insight Formula](#insight-formula). In Deep Analysis mode, the AI also runs DAX queries against the live Power BI model for exact figures.
 
 ### 3. Build
-Assemble a polished 16:9 PPTX with embedded PBI screenshots (default) or vector charts, insight headlines, executive summary, and recommendations.
-
----
-
-## Claude Workflow
-
-Single-command run (installs deps + converts + validates):
-
-```bash
-./convert-to-exec-deck.cmd "C:\path\to\dashboard.pdf"
-```
-
-Or from inside Claude Code:
-
-```
-convert to an executive deck "C:\path\to\dashboard.pdf"
-```
-
-![Demo](demo.gif)
-
-Output is saved as `*_executive.pptx` (~3 minutes).
-
----
-
-## GitHub Copilot Workflow
-
-Open the repo in VS Code and ask Copilot Chat (agent mode):
-
-> Convert `C:\path\to\dashboard.pptx` to an executive deck
-
-Copilot reads [COPILOT.md](COPILOT.md) (auto-discovered via [.github/copilot-instructions.md](.github/copilot-instructions.md)) and runs the three steps automatically:
-
-```bash
-# Step 1 — Extract (text layer + EasyOCR fallback for PPTX dashboard images)
-python convert_dashboard.py "<path>" --prepare --assistant copilot
-
-# Step 2 — Copilot reads images + OCR-enriched text, generates insights, writes JSON
-
-# Step 3 — Build (default: PBI screenshots; add --vector-charts for matplotlib SVGs)
-python convert_dashboard.py --build --output "<output>.pptx"
-```
-
-### EasyOCR Fallback
-
-Power BI PPTX exports embed dashboards as full-page PNG screenshots — no extractable text. The pipeline automatically:
-
-1. Tries embedded text first (markitdown / python-pptx)
-2. Detects boilerplate output ("No alt text provided", chart type names)
-3. Falls back to **EasyOCR** to extract real numbers, KPIs, and labels from the images
-
-This ensures insights reference actual data (e.g. "150 Active Users, 39.7% Power Users") instead of describing chart types.
-
-See [COPILOT.md](COPILOT.md) for the full JSON schema, insight formula, chart specs, and quality guidelines.
+Assemble a polished 16:9 PPTX with embedded PBI screenshots, insight headlines, executive summary, and recommendations.
 
 ---
 
 ## Supported Inputs
 
-| Input | Format | Data Source |
-|---|---|---|
-| **PDF export** | `.pdf` | AI reads page images |
-| **PPTX export** | `.pptx` | AI reads slide images + OCR text extraction |
-| **PBIP project** | `.pbip` | Live DAX queries via MCP (exact values) |
-| **PBIX file** | `.pbix` | Live DAX queries via MCP (exact values) |
+| Input | Format | Mode | Data Source |
+|---|---|---|---|
+| **PDF export** | `.pdf` | ⚡ Quick | AI reads page images |
+| **PPTX export** | `.pptx` | ⚡ Quick | AI reads slide images + OCR text extraction |
+| **PBIP project** | `.pbip` | 🔬 Deep | Live DAX queries via MCP (exact values) + image analysis |
+| **PBIX file** | `.pbix` | 🔬 Deep | Live DAX queries via MCP (exact values) + image analysis |
 
-**How to export from Power BI:**
+**How to export from Power BI (for Quick Mode):**
 - **PDF** — Power BI Desktop: `File → Export → Export to PDF`
 - **PPTX** — Power BI Service: `File → Export → PowerPoint`
 
+> **Accuracy ranking:** PBIP + MCP (highest) > PBIX + MCP > PDF / PPTX (good).
+> Without MCP installed, PBIP and PBIX fall back to image-only analysis automatically — still produces a complete deck, just without DAX-queried precision.
+
 ---
 
-## Deep Analysis Mode (PBIP / PBIX)
+## Deep Analysis Setup (PBIP / PBIX)
 
-For `.pbip` or `.pbix` files, the tool connects to the live Power BI Desktop model via MCP and queries exact values using DAX — no visual estimation needed.
+For `.pbip` or `.pbix` files, the tool connects to the live Power BI Desktop model via the **Power BI MCP** server and queries exact values using DAX — no visual estimation needed.
 
 > **Prefer `.pbip` over `.pbix` when you have the choice.**
 > PBIP stores the semantic model as plain-text TMDL files, so the assistant can read every measure's DAX expression and understand exactly how each KPI is calculated.
 
-### Setup (one-time)
+### One-time setup
 
 ```bash
 python setup_pbi_mcp.py          # Download & register MCP server
@@ -139,17 +158,21 @@ This downloads the official [microsoft/powerbi-modeling-mcp](https://github.com/
 
 > The MCP server runs locally and communicates only with Power BI Desktop on your machine — no data leaves your environment.
 
-### Run
+### Running a deep analysis
 
-1. Open your report in Power BI Desktop
-2. Restart your assistant session (Claude Code: `/exit` → `claude`)
+1. Open your report in **Power BI Desktop**
+2. Restart your assistant session (Claude Code: `/exit` → `claude`; Copilot: reload the window)
 3. Run the conversion:
 
+**Copilot Chat (Agent Mode):**
+> Create exec deck `"C:\path\to\report.pbip"`
+
+**Claude Code:**
 ```
 convert to an executive deck "C:\path\to\report.pbip"
 ```
 
-**Without MCP installed:** The tool falls back to image-only analysis automatically.
+**Without MCP installed:** The tool falls back to image-only analysis automatically (~3–5 min instead of ~15–20 min, with lower numeric precision).
 
 ---
 

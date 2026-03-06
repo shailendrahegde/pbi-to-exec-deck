@@ -1244,10 +1244,12 @@ def render_presentation(
         except Exception as e:
             print(f"  WARNING: Could not load analysis request: {e}")
 
-        # Detect PBIP/PBIX source → prefer page screenshots unless --vector-charts
-        # Read the flag from insights dict (threaded from CLI)
+        # Prefer page-screenshot layout for all non-PPTX sources that have
+        # temp/ images (PBIP, PBIX, PDF) unless --vector-charts forces charts.
         use_vector = insights.get('__vector_charts__', vector_charts)
-        use_screenshots = (file_type in ('.pbip', '.pbix') or Path(source_path).is_dir()) and not use_vector
+        use_screenshots = (
+            file_type in ('.pbip', '.pbix', '.pdf') or Path(source_path).is_dir()
+        ) and not use_vector
 
         # Process insights - iterate by slide number for guaranteed order
         for slide_num in sorted(source_images_map.keys()):
