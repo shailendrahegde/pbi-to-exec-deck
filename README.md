@@ -81,7 +81,7 @@ cd pbi-to-exec-deck
 
 ```
 claude
-> convert to an executive deck "C:\path\to\dashboard.pdf"
+> create exec deck "C:\path\to\dashboard.pdf"
 ```
 
 ![Demo](demo.gif)
@@ -160,7 +160,7 @@ This downloads the official [microsoft/powerbi-modeling-mcp](https://github.com/
 
 **Claude Code:**
 ```
-convert to an executive deck "C:\path\to\report.pbip"
+create exec deck "C:\path\to\report.pbip"
 ```
 
 **Without MCP installed:** The tool falls back to image-only analysis automatically (~3–5 min instead of ~15–20 min, with lower numeric precision).
