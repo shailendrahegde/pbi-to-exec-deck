@@ -77,15 +77,7 @@ git clone https://github.com/shailendrahegde/pbi-to-exec-deck.git
 cd pbi-to-exec-deck
 ```
 
-### 3. Run the conversion
-
-Single-command run (installs deps + converts + validates):
-
-```bash
-./convert-to-exec-deck.cmd "C:\path\to\dashboard.pdf"
-```
-
-Or from inside a Claude Code session:
+### 3. Enter Claude and run the conversion
 
 ```
 claude
