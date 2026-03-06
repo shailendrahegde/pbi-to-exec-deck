@@ -490,7 +490,7 @@ class SlideBuilder:
           ┌──────────────────┐ ┌──────────────────┐
           │                  │ │ • Insight 1       │
           │   PBI Screenshot │ │ • Insight 2       │
-          │   (7.50 × 4.56") │ │ • Insight 3       │
+          │   (7.50 × auto") │ │ • Insight 3       │
           │                  │ │                   │
           └──────────────────┘ └──────────────────┘
           Footer

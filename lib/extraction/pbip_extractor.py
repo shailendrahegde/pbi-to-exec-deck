@@ -926,9 +926,10 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
     print(f"  DPI factor: {_dpi_factor:.2f} ({int(_dpi_factor * 100)}%)")
 
     # --- 5. Determine canvas bounds ---
-    # All pixel constants are scaled by DPI factor so they work correctly on
-    # 100%, 125%, 150%, and 175% display scaling.
-    RIBBON_H    = int(170 * _dpi_factor)  # title-bar + menu + expanded ribbon
+    # Constants are scaled by _dpi_factor because PrintWindow renders the window
+    # at physical pixel resolution (DPI-aware app), so crop offsets must be in
+    # physical pixels too.  At 100% DPI factor=1.0; at 150% factor=1.5.
+    RIBBON_H    = int(175 * _dpi_factor)  # title-bar + menu + expanded ribbon (175 = empirical base at 96-DPI; at 150% DPI → 262, just past the separator at window-y≈258)
     TABS_H      = int(52  * _dpi_factor)  # page-tab strip + status bar
     LEFT_TRIM   = max(0, -wl)             # off-screen border (maximised window)
     LEFT_RAIL_W = int(48  * _dpi_factor)  # PBI Desktop left navigation rail
@@ -992,53 +993,77 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
     def _hash_img(img):
         return _hashlib.md5(img.tobytes()).hexdigest()[:8]
 
-    # --- Detect right panel (Visualizations / Fields / Format) by pixel variance ---
-    # Canvas content (charts, tables) has HIGH variance; the panel background
-    # is nearly uniform (LOW variance per column).
-    # Find the leftmost run of >=30 low-variance columns from the right edge.
+    # --- Detect right panel (Visualizations / Fields / Format) by white-pixel fraction ---
+    # Key insight: PBI editing panels have a gray background (~RGB 242) that
+    # makes <5% of column pixels reach brightness>=248 (pure white).  The
+    # report canvas has lots of white space between chart elements, so >=35%
+    # of pixels are bright-white (>=248).  This reliably distinguishes them
+    # even when the Visualizations pane contains colorful chart-type icons
+    # (which fooled variance-based approaches).
+    #
+    # Algorithm: scan right-to-left.  A column is "canvas-like" when its
+    # white fraction (pixels >=248 / total sampled pixels) >= 0.35.
+    # Find the first run of >=20 consecutive canvas-like columns — the
+    # rightmost of those columns is the canvas right boundary.
+    # Everything to the right = editing panel, cropped out.
     _time.sleep(0.5)
     _cal_full, _cal_wr = _pw_full_image()
     _cal_wl, _cal_wt   = _cal_wr[0], _cal_wr[1]
     _cal_left_rel   = max(0, CANVAS_LEFT          - _cal_wl)
     _cal_right_rel  = min(_cal_full.width  - 1, CANVAS_RIGHT  - _cal_wl)
-    _cal_top_rel    = max(0, CANVAS_TOP + 100      - _cal_wt)
-    _cal_bottom_rel = min(_cal_full.height - 1, CANVAS_TOP + 300 - _cal_wt)
+    _cal_top_rel    = max(0, CANVAS_TOP + 5        - _cal_wt)
+    _cal_bottom_rel = min(_cal_full.height - 1, CANVAS_BOTTOM - _cal_wt)
     if _cal_right_rel > _cal_left_rel and _cal_bottom_rel > _cal_top_rel:
         cal_img  = _cal_full.crop((_cal_left_rel, _cal_top_rel,
                                    _cal_right_rel, _cal_bottom_rel))
         cal_w, cal_h = cal_img.size
 
-        def _col_var(img, x_col, h):
-            vals = []
-            for y in range(0, h, 4):
+        def _col_white_frac(img, x_col, h, threshold=248):
+            """Fraction of sampled pixels with brightness >= threshold."""
+            bright, total = 0, 0
+            for y in range(0, h, 3):
                 px = img.getpixel((x_col, y))
-                vals.append((px[0] + px[1] + px[2]) // 3)
-            if len(vals) < 2:
-                return 9999
-            mean = sum(vals) / len(vals)
-            return sum((v - mean) ** 2 for v in vals) / len(vals)
+                if (px[0] + px[1] + px[2]) // 3 >= threshold:
+                    bright += 1
+                total += 1
+            return bright / total if total > 0 else 0.0
 
-        PANEL_SEARCH_WIDTH = min(600, cal_w)
-        uniform_streak = 0
-        panel_start_img_x = None
+        # Canvas columns: white fraction >= 0.35 (lots of white background)
+        # Panel columns:  white fraction <  0.25 (gray bg, ~RGB 242, not bright-white)
+        CANVAS_FRAC_THRESHOLD = 0.35   # column is "canvas-like" above this
+        CANVAS_STREAK_NEEDED  = 50     # consecutive canvas-like columns to confirm
+        # 50 > the ~32px separator between Visualizations and Data panes,
+        # so the inter-pane white gap doesn't prematurely stop the scan.
+        PANEL_SEARCH_WIDTH    = min(800, cal_w)
+
+        consecutive_canvas = 0
+        canvas_right_edge  = None     # rightmost canvas-like column (cal_img coords)
+
         for dx in range(PANEL_SEARCH_WIDTH):
             x_img = cal_w - 1 - dx
-            var = _col_var(cal_img, x_img, cal_h)
-            if var < 80:
-                uniform_streak += 1
+            frac  = _col_white_frac(cal_img, x_img, cal_h)
+            if frac >= CANVAS_FRAC_THRESHOLD:
+                consecutive_canvas += 1
+                if consecutive_canvas >= CANVAS_STREAK_NEEDED:
+                    # rightmost of these 20 canvas cols = x_img + 19
+                    canvas_right_edge = x_img + (CANVAS_STREAK_NEEDED - 1)
+                    break
             else:
-                if uniform_streak >= 30:
-                    panel_start_img_x = x_img + 1
-                uniform_streak = 0
+                consecutive_canvas = 0    # reset on any panel-like column
 
-        if panel_start_img_x is not None:
-            _panel_px = cal_w - panel_start_img_x   # width of the detected panel in px
-            _min_panel = int(150 * _dpi_factor)      # minimum plausible editing-panel width
-            if _panel_px >= _min_panel:
+        panel_start_img_x = None
+        if canvas_right_edge is not None:
+            _potential_start  = canvas_right_edge + 1
+            _potential_panel_w = cal_w - _potential_start
+            _min_panel = int(150 * _dpi_factor)   # minimum plausible editing-panel width
+            if _potential_panel_w >= _min_panel:
+                panel_start_img_x = _potential_start
                 CANVAS_RIGHT = CANVAS_LEFT + panel_start_img_x
-                print(f"  Right panel detected ({_panel_px}px) at screen x={CANVAS_RIGHT} -- cropped out")
+                print(f"  Right panel detected ({_potential_panel_w}px) at screen x={CANVAS_RIGHT} -- cropped out")
             else:
-                print(f"  Right panel skipped ({_panel_px}px < {_min_panel}px minimum -- likely report slicer, keeping)")
+                print(f"  Right panel region ({_potential_panel_w}px < {_min_panel}px minimum) -- keeping full width")
+        else:
+            print(f"  No panel boundary found (full canvas visible or no white-space in scan) -- keeping full width")
 
     print(f"  Canvas: ({CANVAS_LEFT},{CANVAS_TOP}) -> ({CANVAS_RIGHT},{CANVAS_BOTTOM})"
           f"  [{CANVAS_RIGHT - CANVAS_LEFT}x{CANVAS_BOTTOM - CANVAS_TOP}]")
@@ -1092,6 +1117,48 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
                         break
         except Exception:
             pass   # non-critical; navigation proceeds regardless
+
+        # Step A2: set Page View = "Fit to page" so report content scales to the
+        # visible canvas area and nothing overflows the bottom edge.
+        # Approach: click the View ribbon tab, find the "Fit to page" button, click it,
+        # then return to Home.  All wrapped in try/except — non-critical.
+        try:
+            _view_tab_ctrl = None
+            for _ctrl in _pbi_win.descendants(control_type='TabItem'):
+                if _ctrl.window_text().strip().lower() == 'view':
+                    _view_tab_ctrl = _ctrl
+                    break
+            if _view_tab_ctrl:
+                _view_tab_ctrl.select()
+                _time.sleep(0.5)
+                # Search for the "Fit to page" button (exact or partial match)
+                _ftp_clicked = False
+                for _ctrl in _pbi_win.descendants(control_type='Button'):
+                    _bt = _ctrl.window_text().strip().lower()
+                    if 'fit to page' in _bt or _bt == 'fit':
+                        _ctrl.click_input()
+                        _time.sleep(0.3)
+                        _ftp_clicked = True
+                        print("  Set Page View = Fit to page")
+                        break
+                if not _ftp_clicked:
+                    # Fallback: look for SplitButton or MenuItem named "Page view"
+                    for _ctrl in _pbi_win.descendants():
+                        _bt = _ctrl.window_text().strip().lower()
+                        if _bt in ('fit to page', 'page view: fit to page'):
+                            _ctrl.click_input()
+                            _time.sleep(0.3)
+                            _ftp_clicked = True
+                            print("  Set Page View = Fit to page (fallback)")
+                            break
+                # Return to Home tab regardless of success
+                for _ctrl in _pbi_win.descendants(control_type='TabItem'):
+                    if _ctrl.window_text().strip().lower() == 'home':
+                        _ctrl.select()
+                        _time.sleep(0.3)
+                        break
+        except Exception as _ftp_err:
+            print(f"  Page view setup skipped: {_ftp_err}")
 
         # Step B: find the bottom page tab strip.
         # Two hard constraints that uniquely identify it:
@@ -1196,7 +1263,12 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
             if _pi not in _tab_for_page and _free_tabs:
                 _tab_for_page[_pi] = _free_tabs.pop(0)
 
-        prev_hash = None
+        # Capture a baseline hash BEFORE navigating page 1 so we can detect
+        # whether page 1's content has actually changed from whatever PBI was
+        # showing before the capture loop started.
+        _baseline_hash = _hash_img(_grab_canvas())
+
+        prev_hash = _baseline_hash
         for i, page in enumerate(pages):
             slide_num   = i + 1
             output_path = f"temp/page_{slide_num}.png"
@@ -1204,16 +1276,17 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
             _ti = _tab_for_page.get(i, i)
             if _ti < n_tabs:
                 _page_tabs[_ti].select()
-            _time.sleep(1.5)   # wait for page content to fully render
+            _time.sleep(2.5)   # wait for page content to fully render
 
             curr_img  = _grab_canvas()
             curr_hash = _hash_img(curr_img)
 
-            # If hash unchanged, retry once with a longer wait
-            if prev_hash is not None and curr_hash == prev_hash and _ti < n_tabs:
+            # If hash unchanged from previous page, the navigation hasn't taken
+            # effect yet — retry with a longer wait.
+            if curr_hash == prev_hash and _ti < n_tabs:
                 print(f"    [{slide_num}/{n}] nav stalled -- retrying select()...")
                 _page_tabs[_ti].select()
-                _time.sleep(2.0)
+                _time.sleep(3.0)
                 curr_img  = _grab_canvas()
                 curr_hash = _hash_img(curr_img)
 
@@ -1230,17 +1303,20 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
                     print(f"    [{slide_num}/{n}] editor view detected — resetting to Report view")
                     try:
                         for _vc in _pbi_win.descendants(control_type='Tab'):
-                            if (_vc.rectangle().right - _vc.rectangle().left) < 60:
+                            _rvr = _vc.rectangle()
+                            _rvw = _rvr.right - _rvr.left
+                            _rvh = _rvr.bottom - _rvr.top
+                            if _rvw < 100 and _rvh > _rvw * 3 and _rvr.left < (wl + 100):
                                 _vt = _vc.children(control_type='TabItem')
                                 if _vt:
                                     _vt[0].select()
-                                    _time.sleep(1.2)
+                                    _time.sleep(2.0)
                                     break
                     except Exception:
                         pass
                     if _ti < n_tabs:
                         _page_tabs[_ti].select()
-                        _time.sleep(1.5)
+                        _time.sleep(2.5)
                     curr_img  = _grab_canvas()
                     curr_hash = _hash_img(curr_img)
             except Exception:
