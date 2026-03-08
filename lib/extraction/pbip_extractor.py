@@ -212,24 +212,41 @@ def discover_report_pages(pbip_root: str) -> list:
     """
     root = Path(pbip_root)
 
+    # Derive expected .Report folder name from the .pbip filename
+    # e.g. "LIGHT AI-in-One.pbip" → "LIGHT AI-in-One.Report"
+    expected_report_name = None
+    if root.suffix.lower() == '.pbip':
+        expected_report_name = root.stem + '.Report'
+
     # Find the .Report folder
     report_dir = None
-    for candidate in root.iterdir() if root.is_dir() else []:
-        if candidate.is_dir() and candidate.name.endswith('.Report'):
-            report_dir = candidate
-            break
 
-    # If pbip_root itself is the .Report folder
-    if report_dir is None and root.name.endswith('.Report'):
+    def _find_report_dir(search_dir: Path) -> Path | None:
+        """Search a directory for the matching .Report folder."""
+        if not search_dir.is_dir():
+            return None
+        # Prefer exact name match when we know the expected folder name
+        if expected_report_name:
+            exact = search_dir / expected_report_name
+            if exact.is_dir():
+                return exact
+        # Fallback: first .Report folder found
+        for candidate in search_dir.iterdir():
+            if candidate.is_dir() and candidate.name.endswith('.Report'):
+                return candidate
+        return None
+
+    # 1. Search inside root (if root is a directory)
+    if root.is_dir():
+        report_dir = _find_report_dir(root)
+
+    # 2. If root itself is the .Report folder
+    if report_dir is None and root.name.endswith('.Report') and root.is_dir():
         report_dir = root
 
+    # 3. Search sibling directories (parent of root)
     if report_dir is None:
-        # Try one level up
-        parent = root.parent
-        for candidate in parent.iterdir():
-            if candidate.is_dir() and candidate.name.endswith('.Report'):
-                report_dir = candidate
-                break
+        report_dir = _find_report_dir(root.parent)
 
     if report_dir is None:
         print(f"  WARNING: Could not find .Report directory under '{pbip_root}'")
@@ -282,6 +299,8 @@ def discover_report_pages(pbip_root: str) -> list:
             'display_name': display_name,
             'ordinal': ordinal,
             'is_hidden': is_hidden,
+            'page_width': page_cfg.get('width'),
+            'page_height': page_cfg.get('height'),
             'visuals': visuals,
         })
 
@@ -590,12 +609,31 @@ def extract_model_metadata(pbip_root: str) -> dict:
     root = Path(pbip_root)
 
     # Find the .SemanticModel folder
+    # When passed a .pbip file, derive the expected folder name to avoid
+    # picking up the wrong model when multiple PBIPs share a directory.
     model_dir = None
-    search_root = root if root.is_dir() else root.parent
+    expected_model_name = None
+    if root.suffix.lower() == '.pbip':
+        expected_model_name = root.stem + '.SemanticModel'
+        search_root = root.parent
+    else:
+        search_root = root if root.is_dir() else root.parent
+
     for candidate in search_root.iterdir():
         if candidate.is_dir() and candidate.name.endswith('.SemanticModel'):
-            model_dir = candidate
-            break
+            if expected_model_name and candidate.name == expected_model_name:
+                model_dir = candidate
+                break
+            elif not expected_model_name:
+                model_dir = candidate
+                break
+
+    # Fallback: accept any .SemanticModel if exact match not found
+    if model_dir is None:
+        for candidate in search_root.iterdir():
+            if candidate.is_dir() and candidate.name.endswith('.SemanticModel'):
+                model_dir = candidate
+                break
 
     if model_dir is None:
         print(f"  WARNING: Could not find .SemanticModel directory under '{pbip_root}'")
@@ -993,6 +1031,78 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
     def _hash_img(img):
         return _hashlib.md5(img.tobytes()).hexdigest()[:8]
 
+    def _trim_workspace_gray(img, ws_color=224, tol=2.0, max_trim=80):
+        """Remove residual PBI workspace gray from all 4 edges of a captured
+        page image.  A row/col is trimmed if its mean is within *tol* of
+        *ws_color* AND its std < 1.0 (perfectly uniform gray).  Stops as
+        soon as a non-gray row/col is found (no interior scanning).
+
+        *max_trim* caps how many pixels can be removed per edge to avoid
+        trimming gray report content (e.g. header bands).
+        """
+        try:
+            import numpy as _np2
+        except ImportError:
+            return img
+        gray = _np2.array(img.convert('L'), dtype=_np2.float32)
+        h, w = gray.shape
+        t = b = l = r = 0
+        for row in range(min(max_trim, h // 4)):
+            if gray[row, :].std() < 1.0 and abs(float(gray[row, :].mean()) - ws_color) <= tol:
+                t += 1
+            else:
+                break
+        for row in range(h - 1, max(h - max_trim - 1, h * 3 // 4), -1):
+            if gray[row, :].std() < 1.0 and abs(float(gray[row, :].mean()) - ws_color) <= tol:
+                b += 1
+            else:
+                break
+        for col in range(min(max_trim, w // 4)):
+            if gray[:, col].std() < 1.0 and abs(float(gray[:, col].mean()) - ws_color) <= tol:
+                l += 1
+            else:
+                break
+        for col in range(w - 1, max(w - max_trim - 1, w * 3 // 4), -1):
+            if gray[:, col].std() < 1.0 and abs(float(gray[:, col].mean()) - ws_color) <= tol:
+                r += 1
+            else:
+                break
+        if t or b or l or r:
+            return img.crop((l, t, w - r, h - b))
+        return img
+
+    def _crop_by_page_aspect(img, page_width, page_height):
+        """Compute the exact report rectangle using the known page aspect
+        ratio from the PBIP definition.  PBI Desktop's 'Fit to page' mode
+        centres the report on a gray workspace — knowing the aspect ratio
+        lets us find the report rect deterministically without scanning
+        pixel variance.
+
+        Returns (left, top, right, bottom) in PIL crop convention
+        (right/bottom exclusive), or None if dimensions are unavailable.
+        """
+        if not page_width or not page_height:
+            return None
+        canvas_w, canvas_h = img.size
+        aspect = page_width / page_height
+        # Determine whether the gray bars are horizontal or vertical
+        if canvas_w / canvas_h > aspect:
+            # Canvas wider than page → vertical gray bars on left/right
+            report_h = canvas_h
+            report_w = round(report_h * aspect)
+            offset_x = (canvas_w - report_w) // 2
+            offset_y = 0
+        else:
+            # Canvas taller than page → horizontal gray bars on top/bottom
+            report_w = canvas_w
+            report_h = round(report_w / aspect)
+            offset_x = 0
+            offset_y = (canvas_h - report_h) // 2
+        # Sanity: result must be reasonably sized
+        if report_w < 200 or report_h < 150:
+            return None
+        return (offset_x, offset_y, offset_x + report_w, offset_y + report_h)
+
     def _detect_report_rect(img):
         """Detect the PBI report page rectangle within the rough canvas crop.
 
@@ -1056,12 +1166,42 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
         if any(v is None for v in (top, bottom, left, right)):
             return None
 
-        # Skip past the dotted-border dashes themselves (typically 1–3 px)
-        _skip = 3
-        top    += _skip
-        bottom -= _skip
-        left   += _skip
-        right  -= _skip
+        # Skip past the dotted-border dashes AND any remaining uniform-gray
+        # workspace gap between the border and the actual report content.
+        # The border itself is 1–3 px, but PBI Desktop may add another 3–6 px
+        # of uniform gray padding.  Instead of a hardcoded skip, we scan
+        # inward from the border until we hit a row/col that is NOT uniform
+        # gray (either has content variation or differs from workspace color).
+        row_mean = gray.mean(axis=1)
+        col_mean = gray.mean(axis=0)
+
+        # Workspace gray is the mean of the outermost clean rows/cols
+        _ws_mean = float(_np.median(_np.concatenate([
+            row_mean[:min(5, top)], col_mean[:min(5, left)]
+        ]))) if top > 0 or left > 0 else 224.0
+
+        def _skip_uniform_gray(arr_std, arr_mean, start, direction=1, limit=60):
+            """Advance from *start* in *direction* (+1 or -1) while rows/cols
+            are uniform gray (low std AND mean close to workspace gray).
+            Returns the first index that is NOT uniform gray.
+            limit=60 handles up to ~200 % DPI scaling gaps safely; the
+            std and mean guards prevent over-cropping into report content."""
+            pos = start
+            for _ in range(limit):
+                next_pos = pos + direction
+                if next_pos < 0 or next_pos >= len(arr_std):
+                    break
+                if arr_std[next_pos] > _VT:
+                    break  # high variance = content
+                if abs(float(arr_mean[next_pos]) - _ws_mean) > 8:
+                    break  # different color = report background (even if uniform)
+                pos = next_pos
+            return pos
+
+        top    = _skip_uniform_gray(row_std, row_mean, top,    direction=+1)
+        bottom = _skip_uniform_gray(row_std, row_mean, bottom, direction=-1)
+        left   = _skip_uniform_gray(col_std, col_mean, left,   direction=+1)
+        right  = _skip_uniform_gray(col_std, col_mean, right,  direction=-1)
 
         # Sanity: result must be reasonably sized
         if (right - left) < 200 or (bottom - top) < 150:
@@ -1373,12 +1513,19 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
                 _tab_for_page[_pi] = _free_tabs.pop(0)
 
         # --- 6b. Refine canvas bounds via dotted-border detection ---
-        # PBI Desktop's 'Fit to page' mode draws a dotted border around the
-        # report page on a uniform gray workspace.  Detect this rectangular
-        # boundary from pixel variance to get exact crop coordinates.
+        # PBI Desktop's 'Fit to page' mode renders the report on a gray
+        # workspace.  Detect the report boundary by scanning pixel variance
+        # inward from the canvas edges.
+        #
+        # NOTE: PBI Desktop does NOT preserve the declared page aspect ratio
+        # in the viewport — it stretches the page to fill the available width.
+        # Therefore we CANNOT rely on page.json width/height to calculate the
+        # report rect.  Page dimensions are stored in the page dicts for
+        # downstream use (pbip_context.json, future per-visual cropping) but
+        # the screen crop must use pixel-variance detection.
         #
         # IMPORTANT: We only refine LEFT, TOP, and RIGHT from the detected
-        # border.  CANVAS_BOTTOM is kept at the tab-strip top (from
+        # rectangle.  CANVAS_BOTTOM is kept at the tab-strip top (from
         # UIAutomation) because:
         #   1. Different report pages may have content extending to different
         #      depths — the detection runs on just ONE page.
@@ -1387,6 +1534,7 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
         _time.sleep(1.0)  # ensure page fully rendered after Fit-to-page
         _rough_img = _grab_canvas()
         _report_rect = _detect_report_rect(_rough_img)
+
         if _report_rect is not None:
             _rl, _rt, _rr, _rb = _report_rect
             _old_cl, _old_ct = CANVAS_LEFT, CANVAS_TOP
@@ -1461,6 +1609,7 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
             except Exception:
                 pass   # numpy unavailable or other error — skip guard
 
+            curr_img = _trim_workspace_gray(curr_img)
             curr_img.save(output_path)
             image_map[slide_num] = output_path
             prev_hash = curr_hash
@@ -1484,6 +1633,606 @@ def _capture_pbi_desktop_screenshots(pages: list, pbip_stem: str = '') -> dict:
 
     print(f"  OK Captured {len(image_map)} page screenshots from Power BI Desktop")
     return image_map
+
+
+# ---------------------------------------------------------------------------
+# 4b. Export PDF from Power BI Desktop via UI Automation
+# ---------------------------------------------------------------------------
+
+def _export_pdf_from_pbi_desktop(pbip_path: Path, pbip_root: Path,
+                                  n_pages: int, pbip_stem: str = '') -> dict:
+    """
+    Export a PDF from Power BI Desktop via File > Export > Export to PDF,
+    then extract page images using fitz.
+
+    Steps:
+      1. Find PBI Desktop window and bring to foreground
+      2. Click File tab to open backstage
+      3. Click Export tab, then "Export to PDF" button
+      4. Wait for PDF generation to complete
+      5. Handle any Adobe Acrobat font warning dialogs
+      6. Copy PDF from PBI Desktop temp folder (no Save As needed)
+      7. Close Adobe Acrobat Reader
+      8. Extract page images via fitz
+
+    Returns dict: slide_number (1-based) -> image path string,
+    or empty dict if export fails.
+    """
+    try:
+        import ctypes
+        import os
+        import time
+        import shutil
+        import win32gui
+        import win32con
+        import win32api
+        import win32process
+        import pywinauto
+        from pywinauto.keyboard import send_keys
+        import fitz
+        from PIL import Image as PILImage
+        import io as _io
+        from ctypes import wintypes
+    except ImportError as e:
+        print(f"  WARNING: PDF export unavailable — missing dependency: {e}")
+        return {}
+
+    user32 = ctypes.windll.user32
+
+    # --- SendInput structures for physical key presses ---
+    _INPUT_KEYBOARD = 1
+    _KEYEVENTF_KEYUP = 0x0002
+
+    class _KEYBDINPUT(ctypes.Structure):
+        _fields_ = [
+            ("wVk", wintypes.WORD),
+            ("wScan", wintypes.WORD),
+            ("dwFlags", wintypes.DWORD),
+            ("time", wintypes.DWORD),
+            ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong)),
+        ]
+
+    class _INPUT(ctypes.Structure):
+        class _U(ctypes.Union):
+            _fields_ = [("ki", _KEYBDINPUT)]
+        _fields_ = [
+            ("type", wintypes.DWORD),
+            ("_input", _U),
+        ]
+
+    def _send_key(vk, down=True, up=True):
+        inputs = []
+        extra = ctypes.pointer(ctypes.c_ulong(0))
+        if down:
+            ki = _KEYBDINPUT(wVk=vk, wScan=0, dwFlags=0, time=0, dwExtraInfo=extra)
+            inp = _INPUT(type=_INPUT_KEYBOARD)
+            inp._input.ki = ki
+            inputs.append(inp)
+        if up:
+            ki = _KEYBDINPUT(wVk=vk, wScan=0, dwFlags=_KEYEVENTF_KEYUP, time=0, dwExtraInfo=extra)
+            inp = _INPUT(type=_INPUT_KEYBOARD)
+            inp._input.ki = ki
+            inputs.append(inp)
+        arr = (_INPUT * len(inputs))(*inputs)
+        user32.SendInput(len(inputs), arr, ctypes.sizeof(_INPUT))
+
+    def _send_escape():
+        _send_key(0x1B)  # VK_ESCAPE
+
+    def _find_window_by_title(keywords: tuple[str, ...]) -> int:
+        """Return first visible window whose title contains any keyword."""
+        found_hwnd = 0
+
+        def _enum(hwnd, _):
+            nonlocal found_hwnd
+            if found_hwnd:
+                return False
+            if not win32gui.IsWindowVisible(hwnd):
+                return True
+            title = (win32gui.GetWindowText(hwnd) or '').lower()
+            if not title:
+                return True
+            if any(k in title for k in keywords):
+                found_hwnd = hwnd
+                return False
+            return True
+
+        win32gui.EnumWindows(_enum, None)
+        return found_hwnd
+
+    def _dismiss_acrobat_close_tabs_dialog() -> None:
+        """Dismiss Acrobat 'Close all tabs' prompts by choosing Yes."""
+        def _enum_dialog(hwnd, _):
+            if not win32gui.IsWindowVisible(hwnd):
+                return True
+            if win32gui.GetClassName(hwnd) != '#32770':
+                return True
+            title = (win32gui.GetWindowText(hwnd) or '').lower()
+            if 'acrobat' not in title and 'close all tabs' not in title:
+                return True
+            try:
+                d_app = pywinauto.Application(backend='uia').connect(handle=hwnd)
+                d_dlg = d_app.window(handle=hwnd)
+                yes_btn = d_dlg.child_window(title='Yes', control_type='Button')
+                if yes_btn.exists(timeout=1):
+                    yes_btn.click_input()
+                    return True
+                # Fallback: Alt+Y on focused confirmation dialog.
+                try:
+                    _bring_to_foreground(hwnd)
+                except Exception:
+                    pass
+                send_keys('%y')
+            except Exception:
+                pass
+            return True
+
+        win32gui.EnumWindows(_enum_dialog, None)
+
+    def _close_acrobat_window(hwnd: int) -> None:
+        """Close Acrobat window and handle optional close-all-tabs dialog."""
+        try:
+            win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
+        except Exception:
+            return
+        time.sleep(0.6)
+        _dismiss_acrobat_close_tabs_dialog()
+        time.sleep(0.8)
+
+    # --- Helper: bring a window to the foreground reliably ---
+    def _bring_to_foreground(hwnd):
+        our_tid = win32api.GetCurrentThreadId()
+        fg_hwnd = win32gui.GetForegroundWindow()
+        fg_tid, _ = win32process.GetWindowThreadProcessId(fg_hwnd)
+        tgt_tid, _ = win32process.GetWindowThreadProcessId(hwnd)
+        user32.AttachThreadInput(our_tid, fg_tid, True)
+        user32.AttachThreadInput(our_tid, tgt_tid, True)
+        try:
+            user32.BringWindowToTop(hwnd)
+            user32.SetForegroundWindow(hwnd)
+        except Exception:
+            pass
+        time.sleep(0.3)
+        user32.AttachThreadInput(our_tid, fg_tid, False)
+        user32.AttachThreadInput(our_tid, tgt_tid, False)
+
+    # --- 1. Find PBI Desktop window ---
+    # Uses the same multi-strategy approach as _capture_pbi_desktop_screenshots:
+    #   Priority 1: title contains PBIP stem + "Power BI Desktop"
+    #   Priority 2: title contains PBIP stem (newer PBI builds omit suffix)
+    #   Priority 3: any "Power BI Desktop" window
+    all_windows = []
+    pbi_all = []
+    stem_matches = []
+    _NON_PBI_SUFFIXES = ('- powerpoint', '- word', '- excel', '- outlook',
+                         '- notepad', '- visual studio', '- code',
+                         '- adobe', 'acrobat')
+
+    def _enum_pbi(hwnd, _):
+        if not win32gui.IsWindowVisible(hwnd):
+            return True
+        try:
+            title = win32gui.GetWindowText(hwnd)
+        except Exception:
+            return True
+        if not title:
+            return True
+        all_windows.append((hwnd, title))
+        if 'Power BI Desktop' in title:
+            pbi_all.append((hwnd, title))
+        return True
+    win32gui.EnumWindows(_enum_pbi, None)
+
+    if pbip_stem:
+        match_key = re.sub(r'[^\w ]', '', pbip_stem.lower())[:25].strip()
+        for hwnd, title in all_windows:
+            norm = re.sub(r'[^\w ]', '', title.lower())
+            if match_key and match_key in norm:
+                title_lower = title.lower()
+                if not any(s in title_lower for s in _NON_PBI_SUFFIXES):
+                    stem_matches.append((hwnd, title))
+
+    # Pick best candidate
+    pbi_hwnd = 0
+    stem_and_pbi = [hw for hw, t in stem_matches if 'Power BI Desktop' in t]
+    if stem_and_pbi:
+        pbi_hwnd = stem_and_pbi[0]
+    elif stem_matches:
+        pbi_hwnd = stem_matches[0][0]
+    elif pbi_all:
+        pbi_hwnd = pbi_all[0][0]
+
+    if not pbi_hwnd:
+        print("  Power BI Desktop not found for PDF export")
+        return {}
+
+    print(f"  PBI Desktop: HWND={pbi_hwnd}")
+    try:
+        win32gui.ShowWindow(pbi_hwnd, win32con.SW_MAXIMIZE)
+        time.sleep(0.2)
+    except Exception:
+        pass
+
+    # Close stale Acrobat windows from previous runs to avoid false positives
+    # when waiting for export completion.
+    existing_acrobat_hwnds = set()
+
+    def _collect_acrobat(hwnd, _):
+        if win32gui.IsWindowVisible(hwnd):
+            if win32gui.GetClassName(hwnd) == 'AcrobatSDIWindow':
+                existing_acrobat_hwnds.add(hwnd)
+        return True
+
+    win32gui.EnumWindows(_collect_acrobat, None)
+    for h in list(existing_acrobat_hwnds):
+        _close_acrobat_window(h)
+    if existing_acrobat_hwnds:
+        time.sleep(1.5)
+
+    # --- 2. Trigger export ---
+    # Primary: click on-screen controls (File -> Export -> Export to PDF).
+    # Fallback: keyboard accelerators.
+    _bring_to_foreground(pbi_hwnd)
+    time.sleep(0.8)
+    export_started_at = time.time()
+
+    try:
+        app = pywinauto.Application(backend='uia').connect(handle=pbi_hwnd)
+        pbi_dlg = app.window(handle=pbi_hwnd)
+        win_rect = win32gui.GetWindowRect(pbi_hwnd)
+
+        def _is_in_window(r) -> bool:
+            return (
+                win_rect[0] <= r.left <= win_rect[2] and
+                win_rect[1] <= r.top <= win_rect[3] and
+                r.width() > 0 and r.height() > 0
+            )
+
+        def _wait_export_started(seconds: int = 60) -> bool:
+            for _ in range(seconds):
+                acrobat_probe = 0
+
+                def _find_acrobat_probe(hwnd, _):
+                    nonlocal acrobat_probe
+                    if win32gui.IsWindowVisible(hwnd):
+                        title = win32gui.GetWindowText(hwnd)
+                        cls = win32gui.GetClassName(hwnd)
+                        if cls == 'AcrobatSDIWindow' and '.pdf' in title.lower():
+                            acrobat_probe = hwnd
+                    return True
+
+                win32gui.EnumWindows(_find_acrobat_probe, None)
+                if acrobat_probe and acrobat_probe not in existing_acrobat_hwnds:
+                    return True
+                if _find_window_by_title(('save as', 'save print output as')):
+                    return True
+                time.sleep(1)
+            return False
+
+        export_triggered = False
+
+        # Path A: on-screen UIA click sequence.
+        send_keys('{ESC}')
+        time.sleep(0.2)
+
+        file_tab = None
+        for d in pbi_dlg.descendants(control_type='TabItem'):
+            try:
+                ei = d.element_info
+                r = d.rectangle()
+                name = (ei.name or '').strip().lower()
+                auto_id = (getattr(ei, 'automation_id', '') or '').strip().lower()
+                if not _is_in_window(r):
+                    continue
+                if (
+                    (auto_id == 'ribbon-file' or name == 'file') and
+                    r.left <= (win_rect[0] + 250) and
+                    r.top <= (win_rect[1] + 220)
+                ):
+                    file_tab = d
+                    break
+            except Exception:
+                pass
+
+        if file_tab:
+            print("  Debug: File tab located")
+            try:
+                file_tab.select()
+            except Exception:
+                file_tab.click_input()
+            time.sleep(1.2)
+        else:
+            print("  Debug: File tab not found")
+
+        export_tab = None
+        for d in pbi_dlg.descendants():
+            try:
+                ei = d.element_info
+                r = d.rectangle()
+                if not _is_in_window(r):
+                    continue
+                ct = (ei.control_type or '').strip()
+                if (
+                    (ei.name or '').strip() == 'Export' and
+                    ct in ('TabItem', 'Text', 'Hyperlink', 'Button') and
+                    r.left <= (win_rect[0] + 450) and
+                    r.top >= (win_rect[1] + 350)
+                ):
+                    export_tab = d
+                    break
+            except Exception:
+                pass
+
+        if not export_tab:
+            # Recovery: force backstage via Alt+F, then search again.
+            send_keys('%f')
+            time.sleep(1.0)
+            for d in pbi_dlg.descendants(control_type='TabItem'):
+                try:
+                    ei = d.element_info
+                    r = d.rectangle()
+                    if not _is_in_window(r):
+                        continue
+                    ct = (ei.control_type or '').strip()
+                    if (
+                        (ei.name or '').strip() == 'Export' and
+                        ct in ('TabItem', 'Text', 'Hyperlink', 'Button') and
+                        r.left <= (win_rect[0] + 450) and
+                        r.top >= (win_rect[1] + 350)
+                    ):
+                        export_tab = d
+                        break
+                except Exception:
+                    pass
+
+        if export_tab:
+            print("  Debug: Export tab located")
+            try:
+                export_tab.select()
+            except Exception:
+                export_tab.click_input()
+            time.sleep(1.0)
+        else:
+            print("  Debug: Export tab not found")
+
+        export_pdf_btn = None
+        for _ in range(30):
+            for d in pbi_dlg.descendants(control_type='Button'):
+                try:
+                    ei = d.element_info
+                    r = d.rectangle()
+                    if not _is_in_window(r):
+                        continue
+                    ct = (ei.control_type or '').strip()
+                    name = (ei.name or '').strip().lower()
+                    if (
+                        ('export to pdf' in name) and
+                        ct == 'Button' and
+                        r.left >= (win_rect[0] + 120)
+                    ):
+                        export_pdf_btn = d
+                        break
+                except Exception:
+                    pass
+            if export_pdf_btn:
+                break
+            time.sleep(0.3)
+
+        if not export_pdf_btn:
+            # Recovery: use Export tab accelerator and rescan.
+            send_keys('e')
+            time.sleep(0.8)
+            for _ in range(20):
+                for d in pbi_dlg.descendants(control_type='Button'):
+                    try:
+                        ei = d.element_info
+                        r = d.rectangle()
+                        if not _is_in_window(r):
+                            continue
+                        ct = (ei.control_type or '').strip()
+                        name = (ei.name or '').strip().lower()
+                        if (
+                            ('export to pdf' in name) and
+                            ct in ('Button', 'Hyperlink', 'Text', 'ListItem') and
+                            r.left >= (win_rect[0] + 120)
+                        ):
+                            export_pdf_btn = d
+                            break
+                    except Exception:
+                        pass
+                if export_pdf_btn:
+                    break
+                time.sleep(0.3)
+
+        if export_pdf_btn:
+            print("  Debug: Export to PDF control located")
+            export_pdf_btn.click_input()
+            export_triggered = _wait_export_started()
+        else:
+            print("  Debug: Export to PDF control not found")
+
+        # Path B: keyboard fallback.
+        if not export_triggered:
+            for attempt in range(2):
+                send_keys('{ESC}')
+                time.sleep(0.2)
+                send_keys('%f')
+                time.sleep(0.8 if attempt == 0 else 1.2)
+                send_keys('e')
+                time.sleep(0.5)
+                send_keys('p')
+                time.sleep(0.7)
+                if _wait_export_started():
+                    export_triggered = True
+                    break
+
+        if not export_triggered:
+            print("  Failed to trigger Export to PDF (click + keyboard paths)")
+            return {}
+    except Exception as e:
+        print(f"  Failed to trigger Export to PDF: {e}")
+        return {}
+
+    # --- 4. Wait for PDF generation (poll for up to 5 minutes) ---
+    print("  Generating PDF (this may take a minute)...")
+    max_wait = 300
+    poll_interval = 2
+    elapsed = 0
+    acrobat_hwnd = 0
+
+    while elapsed < max_wait:
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+
+        # Check for Acrobat Reader window (PDF auto-opens when done)
+        def _find_acrobat(hwnd, _):
+            nonlocal acrobat_hwnd
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                cls = win32gui.GetClassName(hwnd)
+                if cls == 'AcrobatSDIWindow' and '.pdf' in title.lower():
+                    acrobat_hwnd = hwnd
+            return True
+        win32gui.EnumWindows(_find_acrobat, None)
+
+        if acrobat_hwnd:
+            print(f"  PDF generated ({elapsed}s)")
+            break
+
+        # Check for and dismiss Adobe Acrobat font warning
+        def _find_dialog(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                cls = win32gui.GetClassName(hwnd)
+                if cls == '#32770' and 'Adobe Acrobat' in title:
+                    try:
+                        d_app = pywinauto.Application(backend='uia').connect(handle=hwnd)
+                        d_dlg = d_app.window(handle=hwnd)
+                        ok_btn = d_dlg.child_window(title='OK', control_type='Button')
+                        if ok_btn.exists(timeout=1):
+                            ok_btn.click_input()
+                            print("  Dismissed Acrobat font warning")
+                    except Exception:
+                        pass
+            return True
+        win32gui.EnumWindows(_find_dialog, None)
+
+    if not acrobat_hwnd:
+        print("  Timed out waiting for PDF export")
+        return {}
+
+    time.sleep(1)
+
+    # --- 5. Dismiss any remaining Acrobat font warnings ---
+    def _dismiss_warnings(hwnd, _):
+        if win32gui.IsWindowVisible(hwnd):
+            cls = win32gui.GetClassName(hwnd)
+            title = win32gui.GetWindowText(hwnd)
+            if cls == '#32770' and 'Acrobat' in title:
+                try:
+                    d_app = pywinauto.Application(backend='uia').connect(handle=hwnd)
+                    d_dlg = d_app.window(handle=hwnd)
+                    ok_btn = d_dlg.child_window(title='OK', control_type='Button')
+                    if ok_btn.exists(timeout=1):
+                        ok_btn.click_input()
+                except Exception:
+                    pass
+        return True
+    win32gui.EnumWindows(_dismiss_warnings, None)
+    time.sleep(1)
+
+    # --- 6. Copy PDF from PBI Desktop temp folder ---
+    # PBI Desktop writes exported PDFs to:
+    #   %LOCALAPPDATA%\Temp\Power BI Desktop\print-job-<guid>\<filename>.pdf
+    # This is far more reliable than automating Acrobat's Save As dialog.
+    acr_title = win32gui.GetWindowText(acrobat_hwnd)
+    pdf_name = acr_title.split(' - Adobe')[0].strip() if ' - Adobe' in acr_title else ''
+    if not pdf_name.lower().endswith('.pdf'):
+        pdf_name = pdf_name + '.pdf'
+
+    pbi_temp_dir = Path(os.environ.get('LOCALAPPDATA', '')) / 'Temp' / 'Power BI Desktop'
+    target_pdf = pbip_root / pdf_name
+
+    source_pdf = None
+    print(f"  Looking for exported PDF in PBI Desktop temp folder...")
+
+    # Wait for the temp PDF to appear (PBI writes it before Acrobat opens,
+    # but there can be a small race).
+    for attempt in range(30):
+        if pbi_temp_dir.exists():
+            candidates = []
+            for print_job_dir in pbi_temp_dir.glob('print-job-*'):
+                candidate = print_job_dir / pdf_name
+                if candidate.exists() and candidate.stat().st_size > 0:
+                    mtime = candidate.stat().st_mtime
+                    if mtime >= (export_started_at - 5):
+                        candidates.append((mtime, candidate))
+            if candidates:
+                # Pick the newest one
+                candidates.sort(reverse=True)
+                source_pdf = candidates[0][1]
+                break
+        time.sleep(0.5)
+
+    if not source_pdf:
+        print(f"  WARNING: Could not find exported PDF in PBI Desktop temp folder")
+        # --- Close Acrobat before returning ---
+        _close_acrobat_window(acrobat_hwnd)
+        return {}
+
+    print(f"  Found temp PDF: {source_pdf.name} ({source_pdf.stat().st_size:,} bytes)")
+
+    # --- 7. Close Acrobat Reader (must release file lock before copy) ---
+    _close_acrobat_window(acrobat_hwnd)
+    time.sleep(1)
+
+    # Copy the PDF to the PBIP directory
+    copied = False
+    last_err = None
+    for _ in range(8):
+        try:
+            shutil.copy2(str(source_pdf), str(target_pdf))
+            copied = True
+            break
+        except Exception as e:
+            last_err = e
+            _close_acrobat_window(acrobat_hwnd)
+            time.sleep(0.8)
+
+    if copied:
+        print(f"  PDF saved: {target_pdf.name} ({target_pdf.stat().st_size:,} bytes)")
+    elif target_pdf.exists() and target_pdf.stat().st_size > 0:
+        print(f"  PDF already at: {target_pdf.name}")
+    else:
+        print(f"  WARNING: Could not copy PDF: {last_err}")
+        # Fall back to reading directly from temp location
+        target_pdf = source_pdf
+
+    # --- 8. Extract page images via fitz ---
+    try:
+        pdf_doc = fitz.open(str(target_pdf))
+        zoom = 150 / 72
+        mat = fitz.Matrix(zoom, zoom)
+        image_map: dict = {}
+
+        Path('temp').mkdir(exist_ok=True)
+        for page_idx in range(min(len(pdf_doc), n_pages)):
+            page = pdf_doc[page_idx]
+            pix = page.get_pixmap(matrix=mat, alpha=False)
+            img = PILImage.open(_io.BytesIO(pix.tobytes("png")))
+
+            img_path = f"temp/page_{page_idx + 1}.png"
+            img.save(img_path)
+            image_map[page_idx + 1] = img_path
+
+        pdf_doc.close()
+        print(f"  OK Extracted {len(image_map)} page images from exported PDF")
+        return image_map
+
+    except Exception as e:
+        print(f"  WARNING: Failed to extract images from PDF: {e}")
+        return {}
+
 
 # ---------------------------------------------------------------------------
 # 5. Companion image extraction (fallback: user-provided PDF/PPTX)
@@ -1632,8 +2381,10 @@ def prepare_pbip_for_analysis(pbip_path: str) -> str:
         return re.sub(r'[^\x00-\x7F\x80-\xFF]', '?', str(text))
 
     # Step 1: Discover report pages
+    # Pass the .pbip file path (not parent dir) so the function can derive
+    # the correct .Report folder name when multiple PBIPs share a directory.
     print("\nDiscovering report pages...")
-    pages = discover_report_pages(str(pbip_root))
+    pages = discover_report_pages(str(pbip_path))
     visible_pages = [p for p in pages if not p['is_hidden']]
     print(f"  Found {len(visible_pages)} visible pages "
           f"({len(pages) - len(visible_pages)} hidden)")
@@ -1643,7 +2394,7 @@ def prepare_pbip_for_analysis(pbip_path: str) -> str:
 
     # Step 2: Extract model metadata
     print("\nExtracting semantic model metadata...")
-    model = extract_model_metadata(str(pbip_root))
+    model = extract_model_metadata(str(pbip_path))
     print(f"  Found {len(model['tables'])} tables, "
           f"{len(model['measures'])} measures, "
           f"{len(model['relationships'])} relationships")
@@ -1655,23 +2406,32 @@ def prepare_pbip_for_analysis(pbip_path: str) -> str:
     print(f"  Generated {total_queries} queries across {len(dax_queries)} pages")
 
     # Step 4: Find images for each page
-    # Priority 1: Live screenshots from the running Power BI Desktop instance
-    # Pass the PBIP stem so we select the right window when multiple PBI files are open
     pbip_stem = pbip_path.stem if pbip_path.suffix.lower() == '.pbip' else pbip_root.name
-    print("\nCapturing live screenshots from Power BI Desktop...")
-    print("  (Close the Fields / Visualizations / Filters panels for cleanest results)")
-    page_images = _capture_pbi_desktop_screenshots(visible_pages, pbip_stem=pbip_stem)
+    page_images = {}
+
+    # Priority 1: Export PDF from PBI Desktop via UI Automation (cleanest output)
+    print("\nAttempting PDF export from Power BI Desktop...")
+    page_images = _export_pdf_from_pbi_desktop(
+        pbip_path, pbip_root, len(visible_pages), pbip_stem=pbip_stem
+    )
 
     if not page_images:
-        # Priority 2: Companion PDF/PPTX in the same folder
+        # Priority 2: Companion PDF/PPTX already in the folder
         print("  Checking for companion PDF/PPTX export in the same folder...")
         page_images = _extract_companion_images(pbip_path, pbip_root, len(visible_pages))
         if page_images:
             matched = sum(1 for v in page_images.values() if v)
             print(f"  Found images for {matched} of {len(visible_pages)} pages from companion file")
-        else:
-            print("  No images found — slides will be text-only")
-            print("  Tip: Open the .pbip in Power BI Desktop, then re-run --prepare to capture live visuals")
+
+    if not page_images:
+        # Priority 3: Live screenshots from PBI Desktop (may have gray border artifacts)
+        print("\nFalling back to screenshot capture from Power BI Desktop...")
+        print("  (Close the Fields / Visualizations / Filters panels for cleanest results)")
+        page_images = _capture_pbi_desktop_screenshots(visible_pages, pbip_stem=pbip_stem)
+
+    if not page_images:
+        print("  No images found — slides will be text-only")
+        print("  Tip: Open the .pbip in Power BI Desktop, then re-run --prepare to capture live visuals")
 
     # Step 5: Write output files
     Path('temp').mkdir(exist_ok=True)
