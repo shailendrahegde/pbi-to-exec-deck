@@ -2069,7 +2069,7 @@ def _export_pdf_from_pbi_desktop(pbip_path: Path, pbip_root: Path,
         if not export_triggered:
             print("  Failed to trigger Export to PDF (click + keyboard paths)")
             return {}
-    except Exception as e:
+    except (Exception, KeyboardInterrupt) as e:
         print(f"  Failed to trigger Export to PDF: {e}")
         return {}
 
@@ -2411,9 +2411,13 @@ def prepare_pbip_for_analysis(pbip_path: str) -> str:
 
     # Priority 1: Export PDF from PBI Desktop via UI Automation (cleanest output)
     print("\nAttempting PDF export from Power BI Desktop...")
-    page_images = _export_pdf_from_pbi_desktop(
-        pbip_path, pbip_root, len(visible_pages), pbip_stem=pbip_stem
-    )
+    try:
+        page_images = _export_pdf_from_pbi_desktop(
+            pbip_path, pbip_root, len(visible_pages), pbip_stem=pbip_stem
+        )
+    except KeyboardInterrupt:
+        print("  PDF export interrupted — falling back to screenshots")
+        page_images = {}
 
     if not page_images:
         # Priority 2: Companion PDF/PPTX already in the folder
